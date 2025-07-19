@@ -1,7 +1,9 @@
-// lib/screens/leads/leads_screen.dart
+// lib/screens/leads/leads_screen.dart - REPLACE ORIGINAL FILE
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/lead_provider.dart';
+import '../../providers/call_provider.dart';
 import '../../config/theme_config.dart';
 import '../../models/lead_model.dart';
 import 'lead_detail_screen.dart';
@@ -25,6 +27,56 @@ class _LeadsScreenState extends State<LeadsScreen> {
     });
   }
 
+  // Direct call functionality
+  Future<void> _makeDirectCall(Lead lead) async {
+    final callProvider = Provider.of<CallProvider>(context, listen: false);
+    
+    try {
+      final success = await callProvider.makeDirectCall(lead.phone);
+      
+      if (success && mounted) {
+        // Show call started notification with quick action
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.phone, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Calling ${lead.name}...'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Log Call',
+              textColor: Colors.white,
+              onPressed: () => _showQuickDispositionDialog(lead),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Failed to make call: ${e.toString()}'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _startAutoDialer(BuildContext context, List<Lead> leads) {
     if (leads.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -38,7 +90,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.play_arrow, color: ThemeConfig.primaryColor),
+            Icon(Icons.auto_mode, color: ThemeConfig.primaryColor),
             const SizedBox(width: 8),
             const Text('Start Auto Dialer'),
           ],
@@ -47,7 +99,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ready to start calling ${leads.length} leads?'),
+            Text('Ready to start auto-dialing ${leads.length} leads?'),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -61,20 +113,21 @@ class _LeadsScreenState extends State<LeadsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info, color: Colors.blue[700], size: 20),
+                      Icon(Icons.auto_awesome, color: Colors.blue[700], size: 20),
                       const SizedBox(width: 8),
                       const Text(
-                        'How it works:',
+                        'Auto Dialer Features:',
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '• App will guide you through each lead\n'
-                    '• Tap "Call Now" to open your phone dialer\n'
-                    '• After each call, update the disposition\n'
-                    '• Automatically moves to the next lead',
+                    '• Automatically dials leads in sequence\n'
+                    '• Configurable delays between calls\n'
+                    '• Auto-progression after dispositions\n'
+                    '• Skip leads or pause anytime\n'
+                    '• Real-time progress tracking',
                     style: TextStyle(fontSize: 13),
                   ),
                 ],
@@ -104,7 +157,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
               backgroundColor: ThemeConfig.primaryColor,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Start Dialing'),
+            child: const Text('Start Auto Dialing'),
           ),
         ],
       ),
@@ -162,22 +215,22 @@ class _LeadsScreenState extends State<LeadsScreen> {
         builder: (context, leadProvider, child) {
           final leads = leadProvider.filteredLeads;
           final newLeads = leads.where((lead) => lead.status == 'new').toList();
+          final callbackLeads = leads.where((lead) => lead.status == 'callback').toList();
 
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Auto Dialer FAB
-              FloatingActionButton.extended(
-                onPressed: leads.isNotEmpty
-                    ? () => _startAutoDialer(context, leads)
-                    : null,
-                backgroundColor:
-                    leads.isNotEmpty ? ThemeConfig.primaryColor : Colors.grey,
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.play_arrow),
-                label: Text('Auto Dial (${leads.length})'),
-                heroTag: "auto_dial",
-              ),
+              // Auto Dialer FAB for All Leads
+              if (leads.isNotEmpty)
+                FloatingActionButton.extended(
+                  onPressed: () => _startAutoDialer(context, leads),
+                  backgroundColor: ThemeConfig.primaryColor,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.auto_mode),
+                  label: Text('Auto Dial (${leads.length})'),
+                  heroTag: "auto_dial_all",
+                ),
+              
               if (newLeads.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 // New Leads Only FAB
@@ -186,8 +239,21 @@ class _LeadsScreenState extends State<LeadsScreen> {
                   backgroundColor: ThemeConfig.successColor,
                   foregroundColor: Colors.white,
                   icon: const Icon(Icons.fiber_new),
-                  label: Text('New Only (${newLeads.length})'),
-                  heroTag: "new_leads",
+                  label: Text('New (${newLeads.length})'),
+                  heroTag: "auto_dial_new",
+                ),
+              ],
+              
+              if (callbackLeads.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                // Callback Leads FAB
+                FloatingActionButton.extended(
+                  onPressed: () => _startAutoDialer(context, callbackLeads),
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.schedule),
+                  label: Text('Callbacks (${callbackLeads.length})'),
+                  heroTag: "auto_dial_callback",
                 ),
               ],
             ],
@@ -319,13 +385,13 @@ class _LeadsScreenState extends State<LeadsScreen> {
         itemCount: leads.length,
         itemBuilder: (context, index) {
           final lead = leads[index];
-          return _buildLeadCard(lead);
+          return _buildEnhancedLeadCard(lead);
         },
       ),
     );
   }
 
-  Widget _buildLeadCard(Lead lead) {
+  Widget _buildEnhancedLeadCard(Lead lead) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -356,21 +422,41 @@ class _LeadsScreenState extends State<LeadsScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          lead.phone,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.phone,
+                              size: 14,
+                              color: Colors.grey[600],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              lead.phone,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                         if (lead.company != null) ...[
                           const SizedBox(height: 2),
-                          Text(
-                            lead.company!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[500],
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.business,
+                                size: 14,
+                                color: Colors.grey[500],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                lead.company!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ],
@@ -415,7 +501,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
                         children: [
                           if (lead.callCount > 0) ...[
                             Icon(
-                              Icons.phone,
+                              Icons.phone_callback,
                               size: 14,
                               color: Colors.grey[600],
                             ),
@@ -468,22 +554,43 @@ class _LeadsScreenState extends State<LeadsScreen> {
                 ),
               ],
               const SizedBox(height: 12),
-              // Action buttons
+              // Enhanced Action buttons
               Row(
                 children: [
+                  // Call Button (Primary)
                   Expanded(
+                    flex: 2,
                     child: ElevatedButton.icon(
-                      onPressed: () => _makeCall(lead),
+                      onPressed: () => _makeDirectCall(lead),
                       icon: const Icon(Icons.phone, size: 16),
-                      label: const Text('Call'),
+                      label: const Text('Call Now'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ThemeConfig.primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // SMS Button
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _sendSMS(lead),
+                      icon: const Icon(Icons.message, size: 16),
+                      label: const Text('SMS'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Update Status Button
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _updateStatus(lead),
@@ -491,6 +598,9 @@ class _LeadsScreenState extends State<LeadsScreen> {
                       label: const Text('Update'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
@@ -543,22 +653,26 @@ class _LeadsScreenState extends State<LeadsScreen> {
     );
   }
 
-  void _makeCall(Lead lead) {
-    // TODO: Implement calling functionality in Phase 3
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Call Feature'),
-        content: Text(
-            'Calling functionality will be implemented in Phase 3.\n\nFor now, you can manually call: ${lead.phone}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+  // Send SMS to lead
+  Future<void> _sendSMS(Lead lead) async {
+    try {
+      final Uri smsUri = Uri(scheme: 'sms', path: lead.phone);
+      
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+      } else {
+        throw Exception('Cannot launch SMS app');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open SMS: ${e.toString()}'),
+            backgroundColor: Colors.red,
           ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   void _updateStatus(Lead lead) {
@@ -566,6 +680,38 @@ class _LeadsScreenState extends State<LeadsScreen> {
       context: context,
       builder: (context) => _StatusUpdateDialog(lead: lead),
     );
+  }
+
+  void _showQuickDispositionDialog(Lead lead) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => _QuickDispositionSheet(
+        lead: lead,
+        onDispositionSelected: (disposition, status) {
+          Navigator.pop(context);
+          _handleQuickDisposition(lead, disposition, status);
+        },
+      ),
+    );
+  }
+
+  void _handleQuickDisposition(Lead lead, String disposition, String status) async {
+    final leadProvider = Provider.of<LeadProvider>(context, listen: false);
+    
+    final success = await leadProvider.logCall(
+      lead.id,
+      disposition: disposition,
+      leadStatus: status,
+    );
+    
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Call logged for ${lead.name}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   void _showFilterDialog() {
@@ -588,6 +734,95 @@ class _LeadsScreenState extends State<LeadsScreen> {
     } else {
       return '${date.day}/${date.month}';
     }
+  }
+}
+
+// Quick Disposition Bottom Sheet
+class _QuickDispositionSheet extends StatelessWidget {
+  final Lead lead;
+  final Function(String disposition, String status) onDispositionSelected;
+
+  const _QuickDispositionSheet({
+    required this.lead,
+    required this.onDispositionSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.phone, color: ThemeConfig.primaryColor),
+              const SizedBox(width: 8),
+              Text(
+                'Log Call - ${lead.name}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Quick action buttons
+          _buildQuickAction(
+            'Interested',
+            Icons.thumb_up,
+            Colors.green,
+            () => onDispositionSelected('interested', 'interested'),
+          ),
+          _buildQuickAction(
+            'Not Interested',
+            Icons.thumb_down,
+            Colors.red,
+            () => onDispositionSelected('not_interested', 'not_interested'),
+          ),
+          _buildQuickAction(
+            'Callback Later',
+            Icons.schedule,
+            Colors.orange,
+            () => onDispositionSelected('callback', 'callback'),
+          ),
+          _buildQuickAction(
+            'Not Reachable',
+            Icons.phone_disabled,
+            Colors.grey,
+            () => onDispositionSelected('not_reachable', 'not_reachable'),
+          ),
+          _buildQuickAction(
+            'Wrong Number',
+            Icons.error,
+            Colors.brown,
+            () => onDispositionSelected('wrong_number', 'wrong_number'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAction(String label, IconData icon, Color color, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: color.withOpacity(0.1),
+          child: Icon(icon, color: color),
+        ),
+        title: Text(label),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        tileColor: Colors.grey[50],
+      ),
+    );
   }
 }
 
@@ -625,7 +860,13 @@ class _StatusUpdateDialogState extends State<_StatusUpdateDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Update ${widget.lead.name}'),
+      title: Row(
+        children: [
+          Icon(Icons.edit, color: ThemeConfig.primaryColor),
+          const SizedBox(width: 8),
+          Text('Update ${widget.lead.name}'),
+        ],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -670,6 +911,10 @@ class _StatusUpdateDialogState extends State<_StatusUpdateDialog> {
         ),
         ElevatedButton(
           onPressed: _updateLead,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ThemeConfig.primaryColor,
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Update'),
         ),
       ],
@@ -693,7 +938,10 @@ class _StatusUpdateDialogState extends State<_StatusUpdateDialog> {
       if (success) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lead updated successfully')),
+          const SnackBar(
+            content: Text('Lead updated successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -724,6 +972,8 @@ class _FilterDialogState extends State<_FilterDialog> {
     {'value': 'callback', 'label': 'Callback Later'},
     {'value': 'not_interested', 'label': 'Not Interested'},
     {'value': 'converted', 'label': 'Converted'},
+    {'value': 'wrong_number', 'label': 'Wrong Number'},
+    {'value': 'not_reachable', 'label': 'Not Reachable'},
   ];
 
   @override
@@ -735,7 +985,13 @@ class _FilterDialogState extends State<_FilterDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Filter Leads'),
+      title: Row(
+        children: [
+          Icon(Icons.filter_list, color: ThemeConfig.primaryColor),
+          const SizedBox(width: 8),
+          const Text('Filter Leads'),
+        ],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: _statusOptions.map((status) {
@@ -748,6 +1004,7 @@ class _FilterDialogState extends State<_FilterDialog> {
                 _selectedStatus = value!;
               });
             },
+            activeColor: ThemeConfig.primaryColor,
           );
         }).toList(),
       ),
@@ -762,6 +1019,10 @@ class _FilterDialogState extends State<_FilterDialog> {
                 .setStatusFilter(_selectedStatus);
             Navigator.pop(context);
           },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ThemeConfig.primaryColor,
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Apply'),
         ),
       ],

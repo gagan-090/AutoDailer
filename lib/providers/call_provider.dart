@@ -1,89 +1,75 @@
-// lib/providers/call_provider.dart
+// lib/providers/call_provider.dart - REPLACE ORIGINAL FILE
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/lead_model.dart';
-import '../services/dialer_service.dart';
+import '../services/auto_dialer_service.dart';
 import '../services/lead_service.dart';
 
 class CallProvider with ChangeNotifier {
   final AutoDialerService _autoDialerService = AutoDialerService();
   final LeadService _leadService = LeadService();
 
-  // Current call state
-  AutoDialerState _autoDialerState = AutoDialerState(
+  // Stream subscriptions
+  StreamSubscription<AutoDialerState>? _stateSubscription;
+  StreamSubscription<AutoDialerEvent>? _eventSubscription;
+
+  // Current state
+  AutoDialerState _currentState = AutoDialerState(
     isActive: false,
-    currentLead: null,
+    isCallInProgress: false,
     currentIndex: 0,
     totalLeads: 0,
     remainingLeads: 0,
+    autoDialDelay: 10,
+    autoRedialEnabled: true,
   );
-  
-  CallEvent? _lastCallEvent;
-  bool _showingDispositionDialog = false;
-  DateTime? _callStartTime;
+
   String? _errorMessage;
+  bool _showingDispositionDialog = false;
 
   // Getters
-  AutoDialerState get autoDialerState => _autoDialerState;
-  CallEvent? get lastCallEvent => _lastCallEvent;
-  bool get showingDispositionDialog => _showingDispositionDialog;
-  DateTime? get callStartTime => _callStartTime;
+  AutoDialerState get currentState => _currentState;
   String? get errorMessage => _errorMessage;
-  
-  bool get isAutoDialing => _autoDialerState.isActive;
-  Lead? get currentLead => _autoDialerState.currentLead;
-  int get remainingLeads => _autoDialerState.remainingLeads;
-  double get progress => _autoDialerState.progress;
+  bool get showingDispositionDialog => _showingDispositionDialog;
+  bool get isAutoDialing => _currentState.isActive;
+  bool get isCallInProgress => _currentState.isCallInProgress;
+  Lead? get currentLead => _currentState.currentLead;
+  int get remainingLeads => _currentState.remainingLeads;
+  double get progress => _currentState.progress;
 
   CallProvider() {
-    // Listen to auto dialer events
-    _autoDialerService.addStateListener(_onAutoDialerStateChanged);
-    _autoDialerService.addCallEventListener(_onCallEvent);
+    // Listen to dialer service streams
+    _stateSubscription = _autoDialerService.stateStream.listen(_onStateChanged);
+    _eventSubscription = _autoDialerService.eventStream.listen(_onEventChanged);
   }
 
   @override
   void dispose() {
-    _autoDialerService.removeStateListener(_onAutoDialerStateChanged);
-    _autoDialerService.removeCallEventListener(_onCallEvent);
+    _stateSubscription?.cancel();
+    _eventSubscription?.cancel();
+    _autoDialerService.dispose();
     super.dispose();
   }
 
-  // Handle auto dialer state changes
-  void _onAutoDialerStateChanged(AutoDialerState state) {
-    _autoDialerState = state;
+  // Handle state changes from dialer service
+  void _onStateChanged(AutoDialerState state) {
+    _currentState = state;
     notifyListeners();
   }
 
-  // Handle call events
-  void _onCallEvent(CallEvent event) {
-    _lastCallEvent = event;
-    
-    switch (event) {
-      case CallEvent.callStarted:
-        _callStartTime = DateTime.now();
-        break;
-      case CallEvent.callEnded:
-        _callStartTime = null;
-        // Show disposition dialog after call ends
-        if (currentLead != null && !_showingDispositionDialog) {
-          _showingDispositionDialog = true;
-        }
-        break;
-      case CallEvent.dialingFailed:
-        _errorMessage = 'Failed to dial ${currentLead?.phone}';
-        break;
-      case CallEvent.autoDialerStopped:
-      case CallEvent.queueCompleted:
-        _callStartTime = null;
-        _showingDispositionDialog = false;
-        break;
-      default:
-        break;
+  // Handle events from dialer service
+  void _onEventChanged(AutoDialerEvent event) {
+    if (event is CallConnected && !_showingDispositionDialog) {
+      // Automatically show disposition dialog when call is connected
+      _showingDispositionDialog = true;
+      notifyListeners();
+    } else if (event is AutoDialerError) {
+      _errorMessage = event.message;
+      notifyListeners();
     }
-    
-    notifyListeners();
   }
 
-  // Start auto dialing with leads
+  // Start auto dialing session
   Future<void> startAutoDialing(List<Lead> leads, {int startIndex = 0}) async {
     try {
       _errorMessage = null;
@@ -98,28 +84,33 @@ class CallProvider with ChangeNotifier {
   void stopAutoDialing() {
     _autoDialerService.stopAutoDialing();
     _showingDispositionDialog = false;
-    _callStartTime = null;
     notifyListeners();
   }
 
-  // Move to next lead
-  Future<void> nextLead() async {
-    await _autoDialerService.nextLead();
+  // Make a direct call (for leads screen)
+  Future<bool> makeDirectCall(String phoneNumber) async {
+    try {
+      final success = await _autoDialerService.makeCall(phoneNumber);
+      if (!success) {
+        _errorMessage = 'Failed to make call';
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      _errorMessage = 'Error making call: $e';
+      notifyListeners();
+      return false;
+    }
   }
 
-  // Skip current lead
-  Future<void> skipLead() async {
-    await _autoDialerService.skipLead();
+  // Skip current lead in auto dialer
+  Future<void> skipCurrentLead() async {
+    await _autoDialerService.skipCurrentLead();
   }
 
-  // Mark call as started (when user confirms they made the call)
-  void markCallStarted() {
-    _autoDialerService.markCallStarted();
-  }
-
-  // Mark call as ended (when user hangs up)
-  void markCallEnded() {
-    _autoDialerService.markCallEnded();
+  // Force dial current lead
+  Future<void> dialCurrentLead() async {
+    await _autoDialerService.dialCurrentLead();
   }
 
   // Log call with disposition
@@ -130,13 +121,10 @@ class CallProvider with ChangeNotifier {
     String? newLeadStatus,
   }) async {
     try {
-      final duration = _autoDialerService.getCallDuration();
-      
       final response = await _leadService.createCallLog(
         leadId,
         disposition: disposition,
         remarks: remarks,
-        duration: duration?.inSeconds,
         leadStatus: newLeadStatus,
       );
 
@@ -144,10 +132,9 @@ class CallProvider with ChangeNotifier {
         _showingDispositionDialog = false;
         notifyListeners();
         
-        // Auto-move to next lead if in auto-dial mode
+        // Notify dialer service that disposition was saved
         if (isAutoDialing) {
-          await Future.delayed(const Duration(seconds: 1));
-          await nextLead();
+          await _autoDialerService.onDispositionSaved();
         }
         
         return true;
@@ -163,6 +150,61 @@ class CallProvider with ChangeNotifier {
     }
   }
 
+  // Quick disposition methods for common actions
+  Future<bool> markAsInterested(int leadId, {String? remarks}) async {
+    return await logCallDisposition(
+      leadId: leadId,
+      disposition: 'interested',
+      remarks: remarks,
+      newLeadStatus: 'interested',
+    );
+  }
+
+  Future<bool> markAsNotInterested(int leadId, {String? remarks}) async {
+    return await logCallDisposition(
+      leadId: leadId,
+      disposition: 'not_interested',
+      remarks: remarks,
+      newLeadStatus: 'not_interested',
+    );
+  }
+
+  Future<bool> markAsCallback(int leadId, {String? remarks}) async {
+    return await logCallDisposition(
+      leadId: leadId,
+      disposition: 'callback',
+      remarks: remarks,
+      newLeadStatus: 'callback',
+    );
+  }
+
+  Future<bool> markAsNotReachable(int leadId, {String? remarks}) async {
+    return await logCallDisposition(
+      leadId: leadId,
+      disposition: 'not_reachable',
+      remarks: remarks,
+      newLeadStatus: 'not_reachable',
+    );
+  }
+
+  Future<bool> markAsWrongNumber(int leadId, {String? remarks}) async {
+    return await logCallDisposition(
+      leadId: leadId,
+      disposition: 'wrong_number',
+      remarks: remarks,
+      newLeadStatus: 'wrong_number',
+    );
+  }
+
+  // Auto dialer settings
+  void setAutoDialDelay(int seconds) {
+    _autoDialerService.setAutoDialDelay(seconds);
+  }
+
+  void setAutoRedialEnabled(bool enabled) {
+    _autoDialerService.setAutoRedialEnabled(enabled);
+  }
+
   // Dismiss disposition dialog
   void dismissDispositionDialog() {
     _showingDispositionDialog = false;
@@ -175,9 +217,10 @@ class CallProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Get call duration
+  // Get call duration (if available)
   Duration? getCallDuration() {
-    return _autoDialerService.getCallDuration();
+    // This could be implemented if you track call start times
+    return null;
   }
 
   // Format call duration
@@ -185,59 +228,5 @@ class CallProvider with ChangeNotifier {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  // Restart auto dialer from specific lead
-  Future<void> restartFrom(int index) async {
-    await _autoDialerService.restartFrom(index);
-  }
-
-  // Get disposition options
-  List<Map<String, String>> get dispositionOptions => [
-    {'value': 'interested', 'label': 'Interested', 'status': 'interested'},
-    {'value': 'not_interested', 'label': 'Not Interested', 'status': 'not_interested'},
-    {'value': 'callback', 'label': 'Callback Later', 'status': 'callback'},
-    {'value': 'wrong_number', 'label': 'Wrong Number', 'status': 'wrong_number'},
-    {'value': 'not_reachable', 'label': 'Not Reachable', 'status': 'not_reachable'},
-    {'value': 'busy', 'label': 'Busy', 'status': 'contacted'},
-    {'value': 'voicemail', 'label': 'Voicemail', 'status': 'contacted'},
-    {'value': 'follow_up', 'label': 'Follow-up Required', 'status': 'contacted'},
-  ];
-
-  // Quick disposition actions
-  Future<void> markAsInterested(Lead lead, {String? remarks}) async {
-    await logCallDisposition(
-      leadId: lead.id,
-      disposition: 'interested',
-      remarks: remarks,
-      newLeadStatus: 'interested',
-    );
-  }
-
-  Future<void> markAsNotInterested(Lead lead, {String? remarks}) async {
-    await logCallDisposition(
-      leadId: lead.id,
-      disposition: 'not_interested',
-      remarks: remarks,
-      newLeadStatus: 'not_interested',
-    );
-  }
-
-  Future<void> markAsCallback(Lead lead, {String? remarks}) async {
-    await logCallDisposition(
-      leadId: lead.id,
-      disposition: 'callback',
-      remarks: remarks,
-      newLeadStatus: 'callback',
-    );
-  }
-
-  Future<void> markAsNotReachable(Lead lead, {String? remarks}) async {
-    await logCallDisposition(
-      leadId: lead.id,
-      disposition: 'not_reachable',
-      remarks: remarks,
-      newLeadStatus: 'not_reachable',
-    );
   }
 }

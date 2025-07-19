@@ -1,11 +1,12 @@
-// lib/screens/dialer/auto_dialer_screen.dart
+// lib/screens/dialer/auto_dialer_screen.dart - REPLACE ORIGINAL FILE
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../../providers/call_provider.dart';
 import '../../providers/lead_provider.dart';
 import '../../config/theme_config.dart';
 import '../../models/lead_model.dart';
-import '../../services/dialer_service.dart';
+import '../../services/auto_dialer_service.dart';
 import 'disposition_dialog.dart';
 
 class AutoDialerScreen extends StatefulWidget {
@@ -23,23 +24,86 @@ class AutoDialerScreen extends StatefulWidget {
 }
 
 class _AutoDialerScreenState extends State<AutoDialerScreen> {
+  final AutoDialerService _dialerService = AutoDialerService();
   List<Lead> _leads = [];
-  int _currentIndex = 0;
-  bool _isDialing = false;
-  DateTime? _callStartTime;
-
+  
+  // Stream subscriptions
+  StreamSubscription<AutoDialerState>? _stateSubscription;
+  StreamSubscription<AutoDialerEvent>? _eventSubscription;
+  
+  // Current state
+  AutoDialerState _currentState = AutoDialerState(
+    isActive: false,
+    isCallInProgress: false,
+    currentIndex: 0,
+    totalLeads: 0,
+    remainingLeads: 0,
+    autoDialDelay: 10,
+    autoRedialEnabled: true,
+  );
+  
+  // Countdown timer for next call
+  Timer? _countdownTimer;
+  int _countdownSeconds = 0;
+  
   @override
   void initState() {
     super.initState();
     
     final leadProvider = Provider.of<LeadProvider>(context, listen: false);
     _leads = widget.initialLeads ?? leadProvider.filteredLeads;
-    _currentIndex = widget.startIndex;
+    
+    // Listen to dialer service streams
+    _stateSubscription = _dialerService.stateStream.listen(_onStateChanged);
+    _eventSubscription = _dialerService.eventStream.listen(_onEvent);
   }
 
-  Lead? get currentLead => _currentIndex < _leads.length ? _leads[_currentIndex] : null;
-  int get remainingLeads => _leads.length - _currentIndex;
-  double get progress => _leads.isNotEmpty ? _currentIndex / _leads.length : 0.0;
+  @override
+  void dispose() {
+    _stateSubscription?.cancel();
+    _eventSubscription?.cancel();
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onStateChanged(AutoDialerState state) {
+    setState(() {
+      _currentState = state;
+    });
+  }
+
+  void _onEvent(AutoDialerEvent event) {
+    if (event is DialingStarted) {
+      _showCallStartedSnackbar(event.lead);
+    } else if (event is CallConnected) {
+      _showCallConnectedSnackbar(event.lead);
+    } else if (event is DialingFailed) {
+      _showDialingFailedSnackbar(event.lead);
+    } else if (event is LeadSkipped) {
+      _showLeadSkippedSnackbar(event.lead);
+    } else if (event is PreparingNextCall) {
+      _startCountdown(event.delay);
+    } else if (event is AllLeadsCompleted) {
+      _showCompletionDialog();
+    } else if (event is AutoDialerError) {
+      _showErrorSnackbar(event.message);
+    }
+  }
+
+  void _startCountdown(int seconds) {
+    _countdownSeconds = seconds;
+    _countdownTimer?.cancel();
+    
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _countdownSeconds--;
+      });
+      
+      if (_countdownSeconds <= 0) {
+        timer.cancel();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,9 +113,15 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
         backgroundColor: ThemeConfig.primaryColor,
         foregroundColor: Colors.white,
         actions: [
+          // Settings button
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _showSettingsDialog,
+          ),
+          // Stop button
           IconButton(
             icon: const Icon(Icons.stop),
-            onPressed: () => _showStopConfirmation(context),
+            onPressed: _currentState.isActive ? _showStopConfirmation : null,
           ),
         ],
       ),
@@ -62,8 +132,8 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
           
           // Current Lead or Completion
           Expanded(
-            child: currentLead != null
-                ? _buildCurrentLeadCard(currentLead!)
+            child: _currentState.currentLead != null
+                ? _buildCurrentLeadCard(_currentState.currentLead!)
                 : _buildCompletionState(),
           ),
           
@@ -88,14 +158,14 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
             children: [
               Expanded(
                 child: LinearProgressIndicator(
-                  value: progress,
+                  value: _currentState.progress,
                   backgroundColor: Colors.grey[300],
                   valueColor: AlwaysStoppedAnimation<Color>(ThemeConfig.primaryColor),
                 ),
               ),
               const SizedBox(width: 12),
               Text(
-                '${_currentIndex + 1}/${_leads.length}',
+                '${_currentState.currentIndex}/${_currentState.totalLeads}',
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -112,24 +182,51 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
             children: [
               _buildStatItem(
                 'Remaining',
-                remainingLeads.toString(),
+                _currentState.remainingLeads.toString(),
                 Icons.schedule,
                 Colors.orange,
               ),
               _buildStatItem(
                 'Completed',
-                _currentIndex.toString(),
+                _currentState.currentIndex.toString(),
                 Icons.check_circle,
                 Colors.green,
               ),
               _buildStatItem(
-                'Progress',
-                '${(progress * 100).toStringAsFixed(0)}%',
-                Icons.trending_up,
+                'Auto Delay',
+                '${_currentState.autoDialDelay}s',
+                Icons.timer,
                 ThemeConfig.primaryColor,
               ),
             ],
           ),
+          
+          // Countdown display
+          if (_countdownSeconds > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.orange[100],
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.orange[300]!),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.timer, color: Colors.orange[700], size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Next call in $_countdownSeconds seconds',
+                    style: TextStyle(
+                      color: Colors.orange[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -196,21 +293,51 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                   
                   const SizedBox(height: 8),
                   
-                  // Phone Number
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: ThemeConfig.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      lead.phone,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: ThemeConfig.primaryColor,
+                  // Phone Number with Call Status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: ThemeConfig.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          lead.phone,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: ThemeConfig.primaryColor,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (_currentState.isCallInProgress) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.phone, color: Colors.white, size: 12),
+                              SizedBox(width: 4),
+                              Text(
+                                'CALLING',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   
                   const SizedBox(height: 12),
@@ -304,12 +431,6 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
               ),
             ),
           ],
-          
-          // Call Timer (if call is active)
-          if (_callStartTime != null) ...[
-            const SizedBox(height: 16),
-            _buildCallTimer(),
-          ],
         ],
       ),
     );
@@ -342,54 +463,6 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
     );
   }
 
-  Widget _buildCallTimer() {
-    return Card(
-      color: Colors.green[50],
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.phone_in_talk, color: Colors.green[700]),
-                const SizedBox(width: 8),
-                const Text(
-                  'Call Active',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            StreamBuilder(
-              stream: Stream.periodic(const Duration(seconds: 1)),
-              builder: (context, snapshot) {
-                if (_callStartTime == null) return const Text('00:00');
-                
-                final duration = DateTime.now().difference(_callStartTime!);
-                final minutes = duration.inMinutes;
-                final seconds = duration.inSeconds % 60;
-                final timeString = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-                
-                return Text(
-                  timeString,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildCompletionState() {
     return Center(
       child: Column(
@@ -411,7 +484,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Great job! You\'ve called all leads in the queue.',
+            'Great job! You\'ve completed all leads in the queue.',
             style: TextStyle(
               color: Colors.grey,
             ),
@@ -438,26 +511,26 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            if (currentLead != null) ...[
-              // Primary Call Button
+            if (_currentState.currentLead != null && _currentState.isActive) ...[
+              // Primary Control Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton.icon(
-                  onPressed: _callStartTime != null
-                      ? _markCallEnded
-                      : () => _makeCall(currentLead!),
+                  onPressed: _currentState.isCallInProgress
+                      ? _showDispositionDialog
+                      : _dialCurrentLead,
                   icon: Icon(
-                    _callStartTime != null ? Icons.call_end : Icons.phone,
+                    _currentState.isCallInProgress ? Icons.edit : Icons.phone,
                     size: 24,
                   ),
                   label: Text(
-                    _callStartTime != null ? 'End Call' : 'Call Now',
+                    _currentState.isCallInProgress ? 'Update Disposition' : 'Call Now',
                     style: const TextStyle(fontSize: 18),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _callStartTime != null 
-                        ? Colors.red 
+                    backgroundColor: _currentState.isCallInProgress 
+                        ? Colors.orange
                         : ThemeConfig.primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -474,7 +547,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: _skipLead,
+                      onPressed: _skipCurrentLead,
                       icon: const Icon(Icons.skip_next),
                       label: const Text('Skip'),
                       style: OutlinedButton.styleFrom(
@@ -485,15 +558,36 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _showQuickDisposition(currentLead!),
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Quick Update'),
+                      onPressed: _showSettingsDialog,
+                      icon: const Icon(Icons.settings),
+                      label: const Text('Settings'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
                 ],
+              ),
+            ] else if (!_currentState.isActive) ...[
+              // Start Auto Dialing Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: _leads.isNotEmpty ? _startAutoDialing : null,
+                  icon: const Icon(Icons.play_arrow, size: 24),
+                  label: Text(
+                    'Start Auto Dialing (${_leads.length} leads)',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ThemeConfig.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
               ),
             ] else ...[
               // Back Button when completed
@@ -523,163 +617,49 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
     );
   }
 
-  void _makeCall(Lead lead) async {
-    // Show confirmation dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.phone, color: ThemeConfig.primaryColor),
-            const SizedBox(width: 8),
-            const Text('Make Call'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Call ${lead.name}?'),
-            const SizedBox(height: 8),
-            Text(
-              lead.phone,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: ThemeConfig.primaryColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'This will open your phone dialer. Tap "End Call" when finished.',
-              style: TextStyle(fontSize: 14),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ThemeConfig.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Call Now'),
-          ),
-        ],
-      ),
-    );
+  // Actions
+  void _startAutoDialing() {
+    _dialerService.startAutoDialing(_leads, startIndex: widget.startIndex);
+  }
 
-    if (confirmed == true) {
-      // Make the actual call using dialer service
-      final dialerService = DialerService();
-      final success = await dialerService.makeCall(lead.phone);
-      
-      if (success) {
-        // Mark call as started
-        setState(() {
-          _callStartTime = DateTime.now();
-          _isDialing = true;
-        });
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to open dialer'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+  void _dialCurrentLead() {
+    _dialerService.dialCurrentLead();
+  }
+
+  void _skipCurrentLead() {
+    _dialerService.skipCurrentLead();
+  }
+
+  void _showDispositionDialog() {
+    if (_currentState.currentLead != null) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => DispositionDialog(
+          lead: _currentState.currentLead!,
+          onDispositionSaved: () {
+            _dialerService.onDispositionSaved();
+          },
+        ),
+      );
     }
   }
 
-  void _markCallEnded() {
-    setState(() {
-      _callStartTime = null;
-      _isDialing = false;
-    });
-
-    // Show disposition dialog
-    if (currentLead != null) {
-      _showDispositionDialog(currentLead!);
-    }
-  }
-
-  void _skipLead() {
-    setState(() {
-      _currentIndex++;
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lead skipped')),
-    );
-  }
-
-  void _showDispositionDialog(Lead lead) {
+  void _showSettingsDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => DispositionDialog(
-        lead: lead,
-        onDispositionSaved: _onDispositionSaved,
-      ),
-    );
-  }
-
-  void _onDispositionSaved() {
-    // Move to next lead after disposition is saved
-    setState(() {
-      _currentIndex++;
-    });
-  }
-
-  void _showQuickDisposition(Lead lead) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => _QuickDispositionSheet(
-        lead: lead,
-        onDispositionSelected: (disposition) {
-          Navigator.pop(context);
-          _handleQuickDisposition(lead, disposition);
+      builder: (context) => _AutoDialerSettingsDialog(
+        currentDelay: _currentState.autoDialDelay,
+        autoRedialEnabled: _currentState.autoRedialEnabled,
+        onSettingsChanged: (delay, autoRedial) {
+          _dialerService.setAutoDialDelay(delay);
+          _dialerService.setAutoRedialEnabled(autoRedial);
         },
       ),
     );
   }
 
-  void _handleQuickDisposition(Lead lead, String disposition) async {
-    final callProvider = Provider.of<CallProvider>(context, listen: false);
-    
-    // Map disposition to lead status
-    final statusMap = {
-      'interested': 'interested',
-      'not_interested': 'not_interested',
-      'callback': 'callback',
-      'not_reachable': 'not_reachable',
-    };
-    
-    final success = await callProvider.logCallDisposition(
-      leadId: lead.id,
-      disposition: disposition,
-      newLeadStatus: statusMap[disposition],
-    );
-    
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lead updated as ${statusMap[disposition]}')),
-      );
-      
-      // Move to next lead
-      setState(() {
-        _currentIndex++;
-      });
-    }
-  }
-
-  void _showStopConfirmation(BuildContext context) {
+  void _showStopConfirmation() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -695,7 +675,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context); // Return to previous screen
+              _dialerService.stopAutoDialing();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Stop', style: TextStyle(color: Colors.white)),
@@ -704,79 +684,329 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
       ),
     );
   }
-}
 
-// Quick Disposition Bottom Sheet
-class _QuickDispositionSheet extends StatelessWidget {
-  final Lead lead;
-  final Function(String) onDispositionSelected;
-
-  const _QuickDispositionSheet({
-    required this.lead,
-    required this.onDispositionSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Update - ${lead.name}',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+  void _showCompletionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green[600]),
+            const SizedBox(width: 8),
+            const Text('All Leads Completed!'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Congratulations! You have successfully called all leads in the queue.'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green[200]!),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.analytics, color: Colors.green[700]),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Session Summary',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Total Leads: ${_currentState.totalLeads}\n'
+                    'Completed: ${_currentState.currentIndex}\n'
+                    'Auto Delay Used: ${_currentState.autoDialDelay} seconds',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Quick action buttons
-          _buildQuickAction(
-            'Interested',
-            Icons.thumb_up,
-            Colors.green,
-            () => onDispositionSelected('interested'),
-          ),
-          _buildQuickAction(
-            'Not Interested',
-            Icons.thumb_down,
-            Colors.red,
-            () => onDispositionSelected('not_interested'),
-          ),
-          _buildQuickAction(
-            'Callback Later',
-            Icons.schedule,
-            Colors.orange,
-            () => onDispositionSelected('callback'),
-          ),
-          _buildQuickAction(
-            'Not Reachable',
-            Icons.phone_disabled,
-            Colors.grey,
-            () => onDispositionSelected('not_reachable'),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context); // Return to leads screen
+            },
+            child: const Text('Back to Leads'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickAction(String label, IconData icon, Color color, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
-          child: Icon(icon, color: color),
+  // Snackbar methods
+  void _showCallStartedSnackbar(Lead lead) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.phone, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Calling ${lead.name}...')),
+          ],
         ),
-        title: Text(label),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  void _showCallConnectedSnackbar(Lead lead) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.phone_in_talk, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Connected to ${lead.name}')),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showDialingFailedSnackbar(Lead lead) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Failed to call ${lead.name}')),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showLeadSkippedSnackbar(Lead lead) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.skip_next, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Skipped ${lead.name}')),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+}
+
+// Auto Dialer Settings Dialog
+class _AutoDialerSettingsDialog extends StatefulWidget {
+  final int currentDelay;
+  final bool autoRedialEnabled;
+  final Function(int delay, bool autoRedial) onSettingsChanged;
+
+  const _AutoDialerSettingsDialog({
+    required this.currentDelay,
+    required this.autoRedialEnabled,
+    required this.onSettingsChanged,
+  });
+
+  @override
+  State<_AutoDialerSettingsDialog> createState() => _AutoDialerSettingsDialogState();
+}
+
+class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
+  late int _selectedDelay;
+  late bool _autoRedialEnabled;
+
+  final List<int> _delayOptions = [5, 10, 15, 20, 30];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDelay = widget.currentDelay;
+    _autoRedialEnabled = widget.autoRedialEnabled;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.settings, color: ThemeConfig.primaryColor),
+          const SizedBox(width: 8),
+          const Text('Auto Dialer Settings'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Auto Redial Toggle
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.autorenew, color: Colors.blue[700]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Auto Redial',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        'Automatically dial next lead after disposition',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _autoRedialEnabled,
+                  onChanged: (value) {
+                    setState(() {
+                      _autoRedialEnabled = value;
+                    });
+                  },
+                  activeColor: ThemeConfig.primaryColor,
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Delay Selection (only if auto redial is enabled)
+          if (_autoRedialEnabled) ...[
+            const Text(
+              'Auto Dial Delay',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Time to wait before dialing the next lead:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            
+            // Delay options
+            ..._delayOptions.map((delay) {
+              return RadioListTile<int>(
+                title: Text('$delay seconds'),
+                subtitle: Text(_getDelayDescription(delay)),
+                value: delay,
+                groupValue: _selectedDelay,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedDelay = value!;
+                  });
+                },
+                activeColor: ThemeConfig.primaryColor,
+                contentPadding: EdgeInsets.zero,
+              );
+            }).toList(),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info, color: Colors.orange[700]),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'With auto redial disabled, you\'ll need to manually tap "Call Now" for each lead.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            widget.onSettingsChanged(_selectedDelay, _autoRedialEnabled);
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Settings updated successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  String _getDelayDescription(int delay) {
+    switch (delay) {
+      case 5:
+        return 'Very fast';
+      case 10:
+        return 'Fast (Recommended)';
+      case 15:
+        return 'Moderate';
+      case 20:
+        return 'Slow';
+      case 30:
+        return 'Very slow';
+      default:
+        return '';
+    }
   }
 }
