@@ -10,10 +10,20 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
+  
+  # HTTP and API
   http: ^1.1.0
+  
+  # State Management
   provider: ^6.0.5
+  
+  # Local Storage
   shared_preferences: ^2.2.0
+  
+  # Date and Time
   intl: ^0.18.1
+  
+  # URL Launcher for dialer
   url_launcher: ^6.1.12
 
 dev_dependencies:

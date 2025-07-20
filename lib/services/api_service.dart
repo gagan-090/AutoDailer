@@ -1,4 +1,4 @@
-// lib/services/api_service.dart - REPLACE COMPLETELY
+// lib/services/api_service.dart - ENHANCED VERSION
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -95,6 +95,53 @@ class ApiService {
     }
   }
 
+  Future<ApiResponse<T>> delete<T>(
+    String endpoint, {
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    try {
+      print('DELETE Request: ${ApiConfig.baseUrl}$endpoint');
+      
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
+        headers: ApiConfig.getHeaders(token: _token),
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+      
+      return _handleResponse<T>(response, fromJson);
+    } catch (e) {
+      print('Network error: $e');
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
+  Future<ApiResponse<T>> put<T>(
+    String endpoint,
+    Map<String, dynamic> data, {
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    try {
+      print('PUT Request: ${ApiConfig.baseUrl}$endpoint');
+      print('PUT Data: ${jsonEncode(data)}');
+      
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
+        headers: ApiConfig.getHeaders(token: _token),
+        body: jsonEncode(data),
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+      
+      return _handleResponse<T>(response, fromJson);
+    } catch (e) {
+      print('Network error: $e');
+      return ApiResponse.error('Network error: ${e.toString()}');
+    }
+  }
+
   ApiResponse<T> _handleResponse<T>(
     http.Response response,
     T Function(Map<String, dynamic>)? fromJson,
@@ -120,8 +167,22 @@ class ApiService {
         print('JSON parsing error: $e');
         return ApiResponse.error('Failed to parse response');
       }
+    } else if (statusCode == 204) {
+      // No content - successful deletion
+      return ApiResponse.success(null);
     } else {
-      return ApiResponse.error('Request failed: $statusCode');
+      // Try to extract error message from response
+      String errorMessage = 'Request failed: $statusCode';
+      try {
+        final errorData = jsonDecode(response.body);
+        if (errorData is Map<String, dynamic>) {
+          errorMessage = errorData['error'] ?? errorData['detail'] ?? errorMessage;
+        }
+      } catch (e) {
+        // Use default error message if parsing fails
+      }
+      
+      return ApiResponse.error(errorMessage);
     }
   }
 }
