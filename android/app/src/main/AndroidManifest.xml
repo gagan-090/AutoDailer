@@ -1,16 +1,21 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Required permissions -->
-    <uses-permission android:name="android.permission.INTERNET" />
+<!-- android/app/src/main/AndroidManifest.xml - ADD THESE PERMISSIONS -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     package="com.example.telecrm_mobile">
+    
+    <!-- REQUIRED PERMISSIONS FOR DIRECT CALLING -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.MODIFY_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    
 
     
+    <!-- REQUIRED FEATURES -->
+    <uses-feature android:name="android.hardware.telephony" android:required="true" />
+    
+    <!-- Your existing permissions and application content... -->
     <application
-        android:label="TeleCRM"
+        android:label="telecrm_mobile"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         
@@ -23,16 +28,19 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             
+            <!-- Meta-data to handle any incoming links -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme" />
-              
+              android:resource="@style/NormalTheme"
+              />
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
         
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

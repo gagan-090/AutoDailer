@@ -1,4 +1,4 @@
-// lib/screens/dialer/auto_dialer_screen.dart - REPLACE ORIGINAL FILE
+// lib/screens/dialer/auto_dialer_screen.dart - FIXED COMPLETE VERSION
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -40,6 +40,8 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
     remainingLeads: 0,
     autoDialDelay: 10,
     autoRedialEnabled: true,
+    callConnectionConfirmed: false,
+    callDuration: null,
   );
   
   // Countdown timer for next call
@@ -76,7 +78,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
     if (event is DialingStarted) {
       _showCallStartedSnackbar(event.lead);
     } else if (event is CallConnected) {
-      _showCallConnectedSnackbar(event.lead);
+      _showCallConnectedDialog(event.lead);
     } else if (event is DialingFailed) {
       _showDialingFailedSnackbar(event.lead);
     } else if (event is LeadSkipped) {
@@ -113,12 +115,10 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
         backgroundColor: ThemeConfig.primaryColor,
         foregroundColor: Colors.white,
         actions: [
-          // Settings button
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _showSettingsDialog,
           ),
-          // Stop button
           IconButton(
             icon: const Icon(Icons.stop),
             onPressed: _currentState.isActive ? _showStopConfirmation : null,
@@ -127,18 +127,107 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
       ),
       body: Column(
         children: [
-          // Progress Header
           _buildProgressHeader(),
-          
-          // Current Lead or Completion
+          if (_currentState.isCallInProgress) _buildCallStatusBanner(),
           Expanded(
             child: _currentState.currentLead != null
                 ? _buildCurrentLeadCard(_currentState.currentLead!)
                 : _buildCompletionState(),
           ),
-          
-          // Control Buttons
           _buildControlButtons(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCallStatusBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green[400]!, Colors.green[600]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'CALL IN PROGRESS',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Calling ${_currentState.currentLead?.name ?? ""}...',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _dialerService.confirmCallConnection(),
+                icon: const Icon(Icons.check, size: 16),
+                label: const Text('Connected'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.green[600],
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _dialerService.reportCallFailed(),
+                icon: const Icon(Icons.close, size: 16),
+                label: const Text('Failed'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[100],
+                  foregroundColor: Colors.red[700],
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showDispositionDialog(),
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('Update'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[100],
+                  foregroundColor: Colors.orange[700],
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -153,7 +242,6 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
       ),
       child: Column(
         children: [
-          // Progress Bar
           Row(
             children: [
               Expanded(
@@ -173,10 +261,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
               ),
             ],
           ),
-          
           const SizedBox(height: 12),
-          
-          // Stats Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -200,8 +285,6 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
               ),
             ],
           ),
-          
-          // Countdown display
           if (_countdownSeconds > 0) ...[
             const SizedBox(height: 12),
             Container(
@@ -221,6 +304,29 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                     style: TextStyle(
                       color: Colors.orange[700],
                       fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      _countdownTimer?.cancel();
+                      _countdownSeconds = 0;
+                      _dialerService.dialCurrentLead();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[600],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Call Now',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -261,14 +367,12 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Lead Info Card
           Card(
             elevation: 4,
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  // Lead Avatar and Status
                   CircleAvatar(
                     radius: 40,
                     backgroundColor: lead.getStatusColor().withOpacity(0.1),
@@ -278,10 +382,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                       size: 40,
                     ),
                   ),
-                  
                   const SizedBox(height: 16),
-                  
-                  // Lead Name
                   Text(
                     lead.name,
                     style: const TextStyle(
@@ -290,10 +391,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  
                   const SizedBox(height: 8),
-                  
-                  // Phone Number with Call Status
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -339,10 +437,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                       ],
                     ],
                   ),
-                  
                   const SizedBox(height: 12),
-                  
-                  // Company (if available)
                   if (lead.company != null) ...[
                     Text(
                       lead.company!,
@@ -354,8 +449,6 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  
-                  // Status Badge
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -376,10 +469,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
               ),
             ),
           ),
-          
           const SizedBox(height: 16),
-          
-          // Lead Details
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -402,8 +492,6 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
               ),
             ),
           ),
-          
-          // Notes (if available)
           if (lead.notes != null && lead.notes!.isNotEmpty) ...[
             const SizedBox(height: 16),
             Card(
@@ -512,7 +600,6 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
         child: Column(
           children: [
             if (_currentState.currentLead != null && _currentState.isActive) ...[
-              // Primary Control Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -539,10 +626,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                   ),
                 ),
               ),
-              
               const SizedBox(height: 12),
-              
-              // Secondary Action Buttons
               Row(
                 children: [
                   Expanded(
@@ -569,7 +653,6 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                 ],
               ),
             ] else if (!_currentState.isActive) ...[
-              // Start Auto Dialing Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -589,8 +672,42 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info, color: Colors.blue[700], size: 20),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'How Auto-Dialing Works',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '• Tap "Call Now" to open dialer with number\n'
+                      '• Make your call manually\n'
+                      '• Return to app and update disposition\n'
+                      '• App will automatically move to next lead\n'
+                      '• Configurable delay between calls',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
             ] else ...[
-              // Back Button when completed
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -617,7 +734,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
     );
   }
 
-  // Actions
+  // Action methods
   void _startAutoDialing() {
     _dialerService.startAutoDialing(_leads, startIndex: widget.startIndex);
   }
@@ -643,6 +760,42 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
         ),
       );
     }
+  }
+
+  void _showCallConnectedDialog(Lead lead) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.phone_in_talk, color: Colors.green[600]),
+            const SizedBox(width: 8),
+            const Text('Call Connected'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Connected to ${lead.name}'),
+            const SizedBox(height: 16),
+            const Text(
+              'Please update the call disposition after your conversation.',
+              style: TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showDispositionDialog();
+            },
+            child: const Text('Update Disposition'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSettingsDialog() {
@@ -736,7 +889,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context); // Return to leads screen
+              Navigator.pop(context);
             },
             child: const Text('Back to Leads'),
           ),
@@ -753,27 +906,16 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
           children: [
             const Icon(Icons.phone, color: Colors.white),
             const SizedBox(width: 8),
-            Expanded(child: Text('Calling ${lead.name}...')),
+            Expanded(child: Text('Opening dialer for ${lead.name}...')),
           ],
         ),
         backgroundColor: Colors.blue,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _showCallConnectedSnackbar(Lead lead) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.phone_in_talk, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Connected to ${lead.name}')),
-          ],
+        duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'Return',
+          textColor: Colors.white,
+          onPressed: () {},
         ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -827,7 +969,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
   }
 }
 
-// Auto Dialer Settings Dialog
+// Settings Dialog
 class _AutoDialerSettingsDialog extends StatefulWidget {
   final int currentDelay;
   final bool autoRedialEnabled;
@@ -870,7 +1012,6 @@ class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Auto Redial Toggle
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -887,11 +1028,11 @@ class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Auto Redial',
+                        'Auto Progression',
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
-                        'Automatically dial next lead after disposition',
+                        'Automatically move to next lead after disposition',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -912,13 +1053,10 @@ class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
               ],
             ),
           ),
-          
           const SizedBox(height: 16),
-          
-          // Delay Selection (only if auto redial is enabled)
           if (_autoRedialEnabled) ...[
             const Text(
-              'Auto Dial Delay',
+              'Auto Progression Delay',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -926,12 +1064,10 @@ class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Time to wait before dialing the next lead:',
+              'Time to wait before moving to the next lead:',
               style: TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 12),
-            
-            // Delay options
             ..._delayOptions.map((delay) {
               return RadioListTile<int>(
                 title: Text('$delay seconds'),
@@ -961,7 +1097,7 @@ class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      'With auto redial disabled, you\'ll need to manually tap "Call Now" for each lead.',
+                      'With auto progression disabled, you\'ll need to manually move to the next lead.',
                       style: TextStyle(fontSize: 12),
                     ),
                   ),

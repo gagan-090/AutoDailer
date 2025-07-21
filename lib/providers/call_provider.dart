@@ -1,4 +1,4 @@
-// lib/providers/call_provider.dart - REPLACE ORIGINAL FILE
+// lib/providers/call_provider.dart - FIXED VERSION
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/lead_model.dart';
@@ -13,7 +13,7 @@ class CallProvider with ChangeNotifier {
   StreamSubscription<AutoDialerState>? _stateSubscription;
   StreamSubscription<AutoDialerEvent>? _eventSubscription;
 
-  // Current state
+  // Current state - FIXED to match AutoDialerState constructor
   AutoDialerState _currentState = AutoDialerState(
     isActive: false,
     isCallInProgress: false,
@@ -22,6 +22,8 @@ class CallProvider with ChangeNotifier {
     remainingLeads: 0,
     autoDialDelay: 10,
     autoRedialEnabled: true,
+    callConnectionConfirmed: false, // ADDED this required parameter
+    callDuration: null, // ADDED this required parameter
   );
 
   String? _errorMessage;
@@ -219,8 +221,7 @@ class CallProvider with ChangeNotifier {
 
   // Get call duration (if available)
   Duration? getCallDuration() {
-    // This could be implemented if you track call start times
-    return null;
+    return _autoDialerService.getCallDuration();
   }
 
   // Format call duration

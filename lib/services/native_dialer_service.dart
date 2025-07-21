@@ -1,4 +1,4 @@
-// lib/services/enhanced_dialer_service.dart - REPLACE auto_dialer_service.dart
+// lib/services/native_dialer_service.dart - PRODUCTION READY VERSION
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,6 +8,9 @@ class AutoDialerService {
   static final AutoDialerService _instance = AutoDialerService._internal();
   factory AutoDialerService() => _instance;
   AutoDialerService._internal();
+
+  // Method channel for native calling
+  static const MethodChannel _channel = MethodChannel('telecrm/dialer');
 
   // Auto dialer state
   List<Lead> _leadQueue = [];
@@ -19,7 +22,7 @@ class AutoDialerService {
   // Configuration
   int _autoDialDelay = 10; // seconds
   bool _enableAutoRedial = true;
-  bool _simulateDirectDial = true; // For testing purposes
+  bool _useNativeDialer = true; // Toggle between native and URL launcher
   
   // Stream controllers for events
   final StreamController<AutoDialerEvent> _eventController = StreamController.broadcast();
@@ -34,7 +37,7 @@ class AutoDialerService {
   int get remainingLeads => _leadQueue.length - _currentIndex;
   int get autoDialDelay => _autoDialDelay;
   
-  // Set auto dial delay (10, 20, 30 seconds)
+  // Set auto dial delay
   void setAutoDialDelay(int seconds) {
     _autoDialDelay = seconds;
     _notifyStateChange();
@@ -46,12 +49,33 @@ class AutoDialerService {
     _notifyStateChange();
   }
   
+  // Initialize native dialer (check permissions)
+  Future<bool> initializeNativeDialer() async {
+    try {
+      final hasPermission = await _channel.invokeMethod('checkCallPermission');
+      if (!hasPermission) {
+        await _channel.invokeMethod('requestCallPermission');
+        // Wait a bit and check again
+        await Future.delayed(const Duration(seconds: 1));
+        return await _channel.invokeMethod('checkCallPermission');
+      }
+      return hasPermission;
+    } catch (e) {
+      print('Failed to initialize native dialer: $e');
+      _useNativeDialer = false;
+      return false;
+    }
+  }
+  
   // Start auto dialing session
   Future<void> startAutoDialing(List<Lead> leads, {int startIndex = 0}) async {
     if (leads.isEmpty) {
       _notifyEvent(AutoDialerEvent.error('No leads to dial'));
       return;
     }
+    
+    // Initialize native dialer for auto mode
+    await initializeNativeDialer();
     
     _leadQueue = leads;
     _currentIndex = startIndex;
@@ -74,73 +98,36 @@ class AutoDialerService {
     _notifyEvent(AutoDialerEvent.autoDialingStopped());
   }
   
-  // Enhanced call method with direct dialing simulation
-  Future<bool> makeCall(String phoneNumber) async {
+  // Enhanced call method with native and fallback options
+  Future<bool> makeCall(String phoneNumber, {bool forceNative = false}) async {
     try {
       final cleanNumber = _cleanPhoneNumber(phoneNumber);
       
-      if (_simulateDirectDial) {
-        // For auto-dialer mode: simulate direct dialing
-        await _simulateDirectDialing(cleanNumber);
-        return true;
-      } else {
-        // For manual calls: open native dialer
-        final Uri telUri = Uri(scheme: 'tel', path: cleanNumber);
-        
-        if (await canLaunchUrl(telUri)) {
-          await launchUrl(telUri);
-          return true;
+      if ((_useNativeDialer || forceNative) && (_isAutoDialing || forceNative)) {
+        // Try native calling first
+        try {
+          final success = await _channel.invokeMethod('makeDirectCall', {
+            'phoneNumber': cleanNumber,
+          });
+          
+          if (success == true) {
+            print('✅ Native call successful to $cleanNumber');
+            return true;
+          } else {
+            print('❌ Native call failed, falling back to URL launcher');
+            return await _makeCallWithUrlLauncher(cleanNumber);
+          }
+        } catch (e) {
+          print('Native call error: $e, falling back to URL launcher');
+          return await _makeCallWithUrlLauncher(cleanNumber);
         }
-        return false;
+      } else {
+        // Use URL launcher for manual calls
+        return await _makeCallWithUrlLauncher(cleanNumber);
       }
     } catch (e) {
       print('Error making call: $e');
       return false;
-    }
-  }
-  
-  // Simulate direct dialing for auto-dialer
-  Future<void> _simulateDirectDialing(String phoneNumber) async {
-    print('🔄 Auto-dialing: $phoneNumber');
-    
-    // Simulate dialing process
-    await Future.delayed(const Duration(milliseconds: 500));
-    print('📞 Connecting to $phoneNumber...');
-    
-    // Simulate connection delay (1-3 seconds)
-    await Future.delayed(Duration(seconds: 1 + (DateTime.now().millisecond % 3)));
-    
-    // Simulate call outcome (85% success rate for demo)
-    final isSuccess = DateTime.now().millisecond % 100 < 85;
-    
-    if (isSuccess) {
-      print('✅ Call connected to $phoneNumber');
-      // You can add platform-specific code here to actually make the call
-      // For Android: Use method channels to invoke native dialing
-      // For iOS: Use CallKit framework
-    } else {
-      print('❌ Call failed to $phoneNumber');
-      throw Exception('Call connection failed');
-    }
-  }
-  
-  // Platform-specific direct dialing (placeholder for future implementation)
-  Future<bool> _makeDirectCall(String phoneNumber) async {
-    try {
-      // For Android: Use method channel to call TelecomManager
-      // For iOS: Use CallKit
-      
-      const platform = MethodChannel('telecrm/dialer');
-      
-      final result = await platform.invokeMethod('makeDirectCall', {
-        'phoneNumber': phoneNumber,
-      });
-      
-      return result == true;
-    } catch (e) {
-      print('Direct call failed, falling back to URL launcher: $e');
-      // Fallback to URL launcher if direct call fails
-      return await _makeCallWithUrlLauncher(phoneNumber);
     }
   }
   
@@ -158,6 +145,16 @@ class AutoDialerService {
       print('URL launcher call failed: $e');
       return false;
     }
+  }
+  
+  // Manual call (for leads screen) - uses URL launcher
+  Future<bool> makeManualCall(String phoneNumber) async {
+    return await makeCall(phoneNumber, forceNative: false);
+  }
+  
+  // Auto call (for auto dialer) - tries native first
+  Future<bool> makeAutoCall(String phoneNumber) async {
+    return await makeCall(phoneNumber, forceNative: true);
   }
   
   // Called when disposition is saved (triggers next call in auto mode)
@@ -210,13 +207,13 @@ class AutoDialerService {
     
     final lead = _leadQueue[_currentIndex];
     _isCallInProgress = true;
-    _simulateDirectDial = true; // Enable direct dialing for auto mode
     _notifyStateChange();
     
     _notifyEvent(AutoDialerEvent.dialingStarted(lead));
     
     try {
-      final success = await makeCall(lead.phone);
+      // Use auto call method for native dialing
+      final success = await makeAutoCall(lead.phone);
       if (success) {
         _notifyEvent(AutoDialerEvent.callConnected(lead));
       } else {
@@ -232,12 +229,6 @@ class AutoDialerService {
         onDispositionSaved();
       });
     }
-  }
-  
-  // Manual call (for leads screen) - uses native dialer
-  Future<bool> makeManualCall(String phoneNumber) async {
-    _simulateDirectDial = false; // Disable direct dialing for manual calls
-    return await makeCall(phoneNumber);
   }
   
   // Clean phone number for dialing
@@ -271,8 +262,26 @@ class AutoDialerService {
   }
   
   // Configure dialing mode
-  void setDialingMode({required bool directDial}) {
-    _simulateDirectDial = directDial;
+  void setNativeDialerEnabled(bool enabled) {
+    _useNativeDialer = enabled;
+  }
+  
+  // Check if native dialing is available
+  Future<bool> isNativeDialingAvailable() async {
+    try {
+      return await _channel.invokeMethod('checkCallPermission');
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  // Request call permission
+  Future<void> requestCallPermission() async {
+    try {
+      await _channel.invokeMethod('requestCallPermission');
+    } catch (e) {
+      print('Failed to request call permission: $e');
+    }
   }
   
   // Dispose resources
@@ -308,7 +317,7 @@ class AutoDialerState {
   double get progress => totalLeads > 0 ? currentIndex / totalLeads : 0.0;
 }
 
-// Auto Dialer Events - Made public for external access
+// Auto Dialer Events
 abstract class AutoDialerEvent {
   const AutoDialerEvent();
   

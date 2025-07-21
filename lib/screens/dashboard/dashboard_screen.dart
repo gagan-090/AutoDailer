@@ -6,6 +6,7 @@ import '../../providers/lead_provider.dart';
 import '../../config/theme_config.dart';
 import '../auth/login_screen.dart';
 import '../leads/leads_screen.dart';
+import '../follow_up/follow_up_screen.dart'; // Import the real follow-up screen
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,7 +21,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<Widget> _screens = [
     const DashboardHomeScreen(),
     const LeadsScreen(),
-    const FollowUpScreen(),
+    const FollowUpScreen(), // Use the real follow-up screen
     const ProfileScreen(),
   ];
 
@@ -284,19 +285,18 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildActionButton(
-                'New Leads',
-                Icons.fiber_new,
-                ThemeConfig.successColor,
+                'Follow-ups',
+                Icons.schedule,
+                Colors.orange,
                 () {
-                  // Navigate to Leads tab with new filter
+                  // Navigate to Follow-ups tab
                   if (context.findAncestorStateOfType<_DashboardScreenState>() != null) {
-                    leadProvider.setStatusFilter('new');
                     context.findAncestorStateOfType<_DashboardScreenState>()!.setState(() {
-                      context.findAncestorStateOfType<_DashboardScreenState>()!._selectedIndex = 1;
+                      context.findAncestorStateOfType<_DashboardScreenState>()!._selectedIndex = 2;
                     });
                   }
                 },
-                subtitle: '${leadProvider.getLeadsByStatus('new').length} leads',
+                subtitle: 'View follow-ups',
               ),
             ),
           ],
@@ -499,37 +499,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 }
 
-// Placeholder screens for navigation
-class FollowUpScreen extends StatelessWidget {
-  const FollowUpScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Follow-ups'),
-        backgroundColor: ThemeConfig.primaryColor,
-        foregroundColor: Colors.white,
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.schedule, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'Follow-ups Screen',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            SizedBox(height: 8),
-            Text('Coming in Phase 4!'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+// Profile Screen remains the same
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
