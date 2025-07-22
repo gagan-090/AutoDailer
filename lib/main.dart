@@ -1,11 +1,11 @@
-// lib/main.dart - UPDATE TO INCLUDE FOLLOW-UP PROVIDER
+// lib/main.dart - CLEAN VERSION
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/theme_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/lead_provider.dart';
 import 'providers/call_provider.dart';
-import 'providers/follow_up_provider.dart'; // Add this import
+import 'providers/follow_up_provider.dart';
 import 'screens/auth/splash_screen.dart';
 
 void main() async {
@@ -23,7 +23,7 @@ class TeleCRMApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => LeadProvider()),
         ChangeNotifierProvider(create: (_) => CallProvider()),
-        ChangeNotifierProvider(create: (_) => FollowUpProvider()), // Add this line
+        ChangeNotifierProvider(create: (_) => FollowUpProvider()),
       ],
       child: MaterialApp(
         title: 'TeleCRM',

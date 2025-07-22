@@ -22,7 +22,7 @@ class _AutoDialerSettingsScreenState extends State<AutoDialerSettingsScreen> {
   String _defaultDisposition = 'not_reachable';
 
   // Delay options
-  final List<int> _delayOptions = [5, 10, 15, 20, 30, 45, 60];
+  final List<int> _delayOptions = [5, 10, 15, 20];
   final List<int> _retryOptions = [0, 1, 2, 3];
 
   @override

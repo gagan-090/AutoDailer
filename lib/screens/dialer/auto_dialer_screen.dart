@@ -1008,104 +1008,105 @@ class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
           const Text('Auto Dialer Settings'),
         ],
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.autorenew, color: Colors.blue[700]),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Auto Progression',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        'Automatically move to next lead after disposition',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: _autoRedialEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _autoRedialEnabled = value;
-                    });
-                  },
-                  activeColor: ThemeConfig.primaryColor,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_autoRedialEnabled) ...[
-            const Text(
-              'Auto Progression Delay',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Time to wait before moving to the next lead:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            ..._delayOptions.map((delay) {
-              return RadioListTile<int>(
-                title: Text('$delay seconds'),
-                subtitle: Text(_getDelayDescription(delay)),
-                value: delay,
-                groupValue: _selectedDelay,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedDelay = value!;
-                  });
-                },
-                activeColor: ThemeConfig.primaryColor,
-                contentPadding: EdgeInsets.zero,
-              );
-            }).toList(),
-          ] else ...[
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: Colors.blue[50],
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(color: Colors.blue[200]!),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info, color: Colors.orange[700]),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'With auto progression disabled, you\'ll need to manually move to the next lead.',
-                      style: TextStyle(fontSize: 12),
+                  Icon(Icons.autorenew, color: Colors.blue[700]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Auto Progression',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          'Automatically move to next lead after disposition',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  Switch(
+                    value: _autoRedialEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _autoRedialEnabled = value;
+                      });
+                    },
+                    activeColor: ThemeConfig.primaryColor,
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            if (_autoRedialEnabled) ...[
+              const Text(
+                'Auto Progression Delay',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Time to wait before moving to the next lead:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              ..._delayOptions.map((delay) {
+                return RadioListTile<int>(
+                  title: Text('$delay seconds'),
+                  subtitle: Text(_getDelayDescription(delay)),
+                  value: delay,
+                  groupValue: _selectedDelay,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedDelay = value!;
+                    });
+                  },
+                  activeColor: ThemeConfig.primaryColor,
+                  contentPadding: EdgeInsets.zero,
+                );
+              }).toList(),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info, color: Colors.orange[700]),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'With auto progression disabled, you\'ll need to manually move to the next lead.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
       actions: [
         TextButton(
@@ -1146,3 +1147,4 @@ class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
     }
   }
 }
+

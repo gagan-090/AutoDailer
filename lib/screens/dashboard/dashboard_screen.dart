@@ -1,4 +1,4 @@
-// lib/screens/dashboard/dashboard_screen.dart - REPLACE COMPLETELY
+// lib/screens/dashboard/dashboard_screen.dart - CLEAN REBUILD
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -6,7 +6,7 @@ import '../../providers/lead_provider.dart';
 import '../../config/theme_config.dart';
 import '../auth/login_screen.dart';
 import '../leads/leads_screen.dart';
-import '../follow_up/follow_up_screen.dart'; // Import the real follow-up screen
+import '../follow_up/follow_up_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,7 +21,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<Widget> _screens = [
     const DashboardHomeScreen(),
     const LeadsScreen(),
-    const FollowUpScreen(), // Use the real follow-up screen
+    const FollowUpScreen(),
     const ProfileScreen(),
   ];
 
@@ -58,7 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// Dashboard Home Screen with Real Data
+// Dashboard Home Screen
 class DashboardHomeScreen extends StatefulWidget {
   const DashboardHomeScreen({super.key});
 
@@ -113,7 +113,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                   
                   const SizedBox(height: 20),
                   
-                  // Stats Cards with Real Data
+                  // Stats Cards
                   _buildStatsCards(leadProvider),
                   
                   const SizedBox(height: 20),
@@ -145,11 +145,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [ThemeConfig.primaryColor, ThemeConfig.primaryColor.withOpacity(0.8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          gradient: ThemeConfig.primaryGradient,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -186,7 +182,6 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 
   Widget _buildStatsCards(LeadProvider leadProvider) {
-    final dashboardData = leadProvider.dashboardData;
     final leads = leadProvider.leads;
     
     return Row(
@@ -272,12 +267,9 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                 Icons.people,
                 ThemeConfig.primaryColor,
                 () {
-                  // Navigate to Leads tab
-                  if (context.findAncestorStateOfType<_DashboardScreenState>() != null) {
-                    context.findAncestorStateOfType<_DashboardScreenState>()!.setState(() {
-                      context.findAncestorStateOfType<_DashboardScreenState>()!._selectedIndex = 1;
-                    });
-                  }
+                  setState(() {
+                    _selectedIndex = 1;
+                  });
                 },
                 subtitle: '${leadProvider.leads.length} total',
               ),
@@ -289,12 +281,9 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                 Icons.schedule,
                 Colors.orange,
                 () {
-                  // Navigate to Follow-ups tab
-                  if (context.findAncestorStateOfType<_DashboardScreenState>() != null) {
-                    context.findAncestorStateOfType<_DashboardScreenState>()!.setState(() {
-                      context.findAncestorStateOfType<_DashboardScreenState>()!._selectedIndex = 2;
-                    });
-                  }
+                  setState(() {
+                    _selectedIndex = 2;
+                  });
                 },
                 subtitle: 'View follow-ups',
               ),
@@ -377,7 +366,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                       };
                       
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
                         child: Row(
                           children: [
                             Container(
@@ -459,13 +448,10 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                         ),
                       ),
                       onTap: () {
-                        // Navigate to leads and select this lead
                         leadProvider.selectLead(lead);
-                        if (context.findAncestorStateOfType<_DashboardScreenState>() != null) {
-                          context.findAncestorStateOfType<_DashboardScreenState>()!.setState(() {
-                            context.findAncestorStateOfType<_DashboardScreenState>()!._selectedIndex = 1;
-                          });
-                        }
+                        setState(() {
+                          _selectedIndex = 1;
+                        });
                       },
                     );
                   }).toList(),
@@ -497,9 +483,30 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
         return Colors.grey;
     }
   }
+
+  // Access the parent widget's state
+  void _navigateToTab(int index) {
+    final dashboardState = context.findAncestorStateOfType<_DashboardScreenState>();
+    dashboardState?.setState(() {
+      dashboardState._selectedIndex = index;
+    });
+  }
+
+  // Fix the selectedIndex access
+  int get _selectedIndex {
+    final dashboardState = context.findAncestorStateOfType<_DashboardScreenState>();
+    return dashboardState?._selectedIndex ?? 0;
+  }
+
+  set _selectedIndex(int value) {
+    final dashboardState = context.findAncestorStateOfType<_DashboardScreenState>();
+    dashboardState?.setState(() {
+      dashboardState._selectedIndex = value;
+    });
+  }
 }
 
-// Profile Screen remains the same
+// Profile Screen
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 

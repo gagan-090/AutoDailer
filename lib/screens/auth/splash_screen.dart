@@ -1,4 +1,4 @@
-// lib/screens/auth/splash_screen.dart
+// lib/screens/auth/splash_screen.dart - ENHANCED PROFESSIONAL DESIGN
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -14,47 +14,126 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
+    with TickerProviderStateMixin {
+  late AnimationController _logoController;
+  late AnimationController _textController;
+  late AnimationController _backgroundController;
+  late AnimationController _progressController;
+  
+  late Animation<double> _logoScaleAnimation;
+  late Animation<double> _logoRotationAnimation;
+  late Animation<double> _textFadeAnimation;
+  late Animation<Offset> _textSlideAnimation;
+  late Animation<double> _backgroundAnimation;
+  late Animation<double> _progressAnimation;
 
   @override
   void initState() {
     super.initState();
-    
-    // Initialize animations
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+    _setupAnimations();
+    _startAnimationSequence();
+  }
+
+  void _setupAnimations() {
+    // Logo animations
+    _logoController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-
-    _fadeAnimation = Tween<double>(
+    
+    _logoScaleAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      parent: _logoController,
+      curve: Curves.elasticOut,
     ));
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.5,
+    
+    _logoRotationAnimation = Tween<double>(
+      begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+      parent: _logoController,
+      curve: Curves.easeInOut,
     ));
 
-    // Start animation and check auth status
-    _animationController.forward();
+    // Text animations
+    _textController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _textFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _textController,
+      curve: Curves.easeOut,
+    ));
+    
+    _textSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _textController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // Background animation
+    _backgroundController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+    
+    _backgroundAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _backgroundController,
+      curve: Curves.easeInOut,
+    ));
+
+    // Progress animation
+    _progressController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    
+    _progressAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _progressController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  Future<void> _startAnimationSequence() async {
+    // Start background animation immediately
+    _backgroundController.forward();
+    
+    // Wait a bit then start logo animation
+    await Future.delayed(const Duration(milliseconds: 300));
+    _logoController.forward();
+    
+    // Start text animation after logo starts
+    await Future.delayed(const Duration(milliseconds: 600));
+    _textController.forward();
+    
+    // Start progress animation
+    await Future.delayed(const Duration(milliseconds: 400));
+    _progressController.forward();
+    
+    // Check auth status and navigate
+    await Future.delayed(const Duration(milliseconds: 800));
     _checkAuthAndNavigate();
   }
 
   Future<void> _checkAuthAndNavigate() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    // Wait for animation to complete
-    await Future.delayed(const Duration(milliseconds: 2500));
+    // Wait for animations to complete
+    await Future.delayed(const Duration(milliseconds: 500));
     
     // Check authentication status
     await authProvider.checkAuthStatus();
@@ -74,9 +153,18 @@ class _SplashScreenState extends State<SplashScreen>
         pageBuilder: (context, animation, secondaryAnimation) =>
             const DashboardScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(1.0, 0.0),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+              child: child,
+            ),
+          );
         },
-        transitionDuration: const Duration(milliseconds: 300),
+        transitionDuration: const Duration(milliseconds: 600),
       ),
     );
   }
@@ -87,101 +175,357 @@ class _SplashScreenState extends State<SplashScreen>
         pageBuilder: (context, animation, secondaryAnimation) =>
             const LoginScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.0, 1.0),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+              child: child,
+            ),
+          );
         },
-        transitionDuration: const Duration(milliseconds: 300),
+        transitionDuration: const Duration(milliseconds: 600),
       ),
     );
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _logoController.dispose();
+    _textController.dispose();
+    _backgroundController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ThemeConfig.primaryColor,
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Column(
+      body: AnimatedBuilder(
+        animation: _backgroundAnimation,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.lerp(ThemeConfig.primaryBlue, ThemeConfig.primaryBlue.withOpacity(0.8), _backgroundAnimation.value)!,
+                  Color.lerp(ThemeConfig.primaryBlue.withOpacity(0.8), const Color(0xFF1A365D), _backgroundAnimation.value)!,
+                ],
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Background decoration circles
+                _buildBackgroundDecoration(),
+                
+                // Main content
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Spacer(flex: 2),
+                      
+                      // Logo section
+                      _buildLogo(),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Text section
+                      _buildText(),
+                      
+                      const Spacer(flex: 2),
+                      
+                      // Progress section
+                      _buildProgress(),
+                      
+                      const SizedBox(height: 60),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBackgroundDecoration() {
+    return AnimatedBuilder(
+      animation: _backgroundAnimation,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            // Top right circle
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Opacity(
+                opacity: _backgroundAnimation.value * 0.1,
+                child: Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Bottom left circle
+            Positioned(
+              bottom: -150,
+              left: -150,
+              child: Opacity(
+                opacity: _backgroundAnimation.value * 0.08,
+                child: Container(
+                  width: 400,
+                  height: 400,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            
+            // Center right small circle
+            Positioned(
+              top: MediaQuery.of(context).size.height * 0.3,
+              right: -50,
+              child: Opacity(
+                opacity: _backgroundAnimation.value * 0.06,
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLogo() {
+    return AnimatedBuilder(
+      animation: _logoController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _logoScaleAnimation.value,
+          child: Transform.rotate(
+            angle: _logoRotationAnimation.value * 0.1,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 15),
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.phone_in_talk_rounded,
+                size: 70,
+                color: ThemeConfig.primaryBlue,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildText() {
+    return AnimatedBuilder(
+      animation: _textController,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _textFadeAnimation,
+          child: SlideTransition(
+            position: _textSlideAnimation,
+            child: Column(
+              children: [
+                // App name with shimmer effect
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [
+                      Colors.white,
+                      Colors.white.withOpacity(0.8),
+                      Colors.white,
+                    ],
+                    stops: [
+                      0.0,
+                      _textFadeAnimation.value,
+                      1.0,
+                    ],
+                  ).createShader(bounds),
+                  child: const Text(
+                    'TeleEasyian',
+                    style: TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -1.0,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Tagline
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    'Professional Sales Management',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white.withOpacity(0.9),
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // Feature highlights
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // App Logo
+                    _buildFeatureChip('Auto Dialer', Icons.phone),
+                    const SizedBox(width: 12),
+                    _buildFeatureChip('Lead Management', Icons.people),
+                    const SizedBox(width: 12),
+                    
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeatureChip(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: Colors.white.withOpacity(0.8),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgress() {
+    return AnimatedBuilder(
+      animation: _progressController,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _progressAnimation,
+          child: Column(
+            children: [
+              // Progress indicator
+              Container(
+                width: 60,
+                height: 60,
+                child: Stack(
+                  children: [
+                    // Background circle
                     Container(
-                      width: 120,
-                      height: 120,
+                      width: 60,
+                      height: 60,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    
+                    // Progress circle
+                    Center(
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white.withOpacity(0.9),
                           ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.phone_in_talk,
-                        size: 60,
-                        color: ThemeConfig.primaryColor,
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // App Name
-                    const Text(
-                      'TeleCRM',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 8),
-                    
-                    // Tagline
-                    Text(
-                      'Sales Made Simple',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withOpacity(0.8),
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 60),
-                    
-                    // Loading indicator
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.white.withOpacity(0.8),
+                          backgroundColor: Colors.white.withOpacity(0.2),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        ),
-      ),
+              
+              const SizedBox(height: 16),
+              
+              // Loading text
+              Text(
+                'Initializing...',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.8),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
