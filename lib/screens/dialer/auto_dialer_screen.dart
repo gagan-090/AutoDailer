@@ -1,9 +1,10 @@
-// lib/screens/dialer/auto_dialer_screen.dart - FIXED COMPLETE VERSION
+// lib/screens/dialer/auto_dialer_screen.dart - COMPLETE VERSION WITH DISPOSITION BUTTON
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../providers/call_provider.dart';
 import '../../providers/lead_provider.dart';
+import '../../providers/follow_up_provider.dart';
 import '../../config/theme_config.dart';
 import '../../models/lead_model.dart';
 import '../../services/auto_dialer_service.dart';
@@ -627,6 +628,50 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              // ADDED: Always show disposition button when active
+              if (!_currentState.isCallInProgress) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton.icon(
+                    onPressed: _showDispositionDialog,
+                    icon: const Icon(Icons.edit_note, size: 24),
+                    label: const Text(
+                      'Update Disposition',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              // NEW: Schedule Follow-up Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  onPressed: _showScheduleFollowUpDialog,
+                  icon: const Icon(Icons.schedule, size: 24),
+                  label: const Text(
+                    'Schedule Follow-up',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -759,6 +804,308 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
           },
         ),
       );
+    }
+  }
+
+  // NEW: Schedule Follow-up Dialog
+  void _showScheduleFollowUpDialog() {
+    if (_currentState.currentLead == null) return;
+
+    final lead = _currentState.currentLead!;
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    TimeOfDay selectedTime = const TimeOfDay(hour: 10, minute: 0);
+    final TextEditingController remarksController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.purple.withOpacity(0.1),
+                child: const Icon(Icons.schedule, color: Colors.purple),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Schedule Follow-up',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    Text(
+                      lead.name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date Selection
+                const Text(
+                  'Follow-up Date',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        selectedDate = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today, color: Colors.grey[600]),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Time Selection
+                const Text(
+                  'Follow-up Time',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final TimeOfDay? picked = await showTimePicker(
+                      context: context,
+                      initialTime: selectedTime,
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        selectedTime = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.access_time, color: Colors.grey[600]),
+                        const SizedBox(width: 8),
+                        Text(
+                          selectedTime.format(context),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Remarks
+                const Text(
+                  'Follow-up Notes',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: remarksController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Add notes for the follow-up call...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Quick Options
+                const Text(
+                  'Quick Options',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ActionChip(
+                      label: const Text('Tomorrow 10 AM'),
+                      onPressed: () {
+                        setState(() {
+                          selectedDate = DateTime.now().add(const Duration(days: 1));
+                          selectedTime = const TimeOfDay(hour: 10, minute: 0);
+                        });
+                      },
+                    ),
+                    ActionChip(
+                      label: const Text('Next Week'),
+                      onPressed: () {
+                        setState(() {
+                          selectedDate = DateTime.now().add(const Duration(days: 7));
+                          selectedTime = const TimeOfDay(hour: 10, minute: 0);
+                        });
+                      },
+                    ),
+                    ActionChip(
+                      label: const Text('Next Month'),
+                      onPressed: () {
+                        setState(() {
+                          selectedDate = DateTime.now().add(const Duration(days: 30));
+                          selectedTime = const TimeOfDay(hour: 10, minute: 0);
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                // Save follow-up
+                await _saveFollowUp(
+                  lead,
+                  selectedDate,
+                  selectedTime,
+                  remarksController.text.trim(),
+                );
+                Navigator.pop(context);
+              },
+              icon: const Icon(Icons.save),
+              label: const Text('Schedule'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // NEW: Save Follow-up Method
+  Future<void> _saveFollowUp(
+    Lead lead, 
+    DateTime date, 
+    TimeOfDay time, 
+    String remarks
+  ) async {
+    try {
+      final followUpDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+
+      // Format time for API (HH:mm format)
+      final timeString = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+      // Use your follow-up provider to create follow-up
+      final followUpProvider = Provider.of<FollowUpProvider>(context, listen: false);
+      
+      final success = await followUpProvider.createFollowUp(
+        leadId: lead.id,
+        followUpDate: followUpDateTime,
+        followUpTime: timeString,
+        remarks: remarks.isEmpty ? 'Follow-up scheduled from auto dialer' : remarks,
+      );
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Follow-up scheduled for ${lead.name} on ${date.day}/${date.month}/${date.year} at ${time.format(context)}',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        
+        // Refresh follow-ups list
+        await followUpProvider.loadFollowUps(refresh: true);
+      } else if (mounted) {
+        final errorMsg = followUpProvider.errorMessage ?? 'Failed to schedule follow-up. Please try again.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -1147,4 +1494,3 @@ class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {
     }
   }
 }
-
