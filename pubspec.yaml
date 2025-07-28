@@ -27,6 +27,7 @@ dependencies:
   
   # URL Launcher for dialer
   url_launcher: ^6.1.12
+  flutter_local_notifications: ^19.4.0
 
 dev_dependencies:
   flutter_test:
@@ -40,7 +41,7 @@ flutter:
 
 
   assets:
-    - assets/icon/
+    - assets/icons/
 
 flutter_launcher_icons:
   android: "launcher_icon"

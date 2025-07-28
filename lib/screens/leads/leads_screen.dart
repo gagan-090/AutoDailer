@@ -8,6 +8,7 @@ import '../../config/theme_config.dart';
 import '../../models/lead_model.dart';
 import 'lead_detail_screen.dart';
 import '../dialer/auto_dialer_screen.dart';
+import '../../services/whatsapp_service.dart';
 
 class LeadsScreen extends StatefulWidget {
   const LeadsScreen({super.key});
@@ -30,10 +31,10 @@ class _LeadsScreenState extends State<LeadsScreen> {
   // Direct call functionality
   Future<void> _makeDirectCall(Lead lead) async {
     final callProvider = Provider.of<CallProvider>(context, listen: false);
-    
+
     try {
       final success = await callProvider.makeDirectCall(lead.phone);
-      
+
       if (success && mounted) {
         // Show call started notification with quick action
         ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +114,8 @@ class _LeadsScreenState extends State<LeadsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.auto_awesome, color: Colors.blue[700], size: 20),
+                      Icon(Icons.auto_awesome,
+                          color: Colors.blue[700], size: 20),
                       const SizedBox(width: 8),
                       const Text(
                         'Auto Dialer Features:',
@@ -215,7 +217,8 @@ class _LeadsScreenState extends State<LeadsScreen> {
         builder: (context, leadProvider, child) {
           final leads = leadProvider.filteredLeads;
           final newLeads = leads.where((lead) => lead.status == 'new').toList();
-          final callbackLeads = leads.where((lead) => lead.status == 'callback').toList();
+          final callbackLeads =
+              leads.where((lead) => lead.status == 'callback').toList();
 
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -230,7 +233,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
                   label: Text('Auto Dial (${leads.length})'),
                   heroTag: "auto_dial_all",
                 ),
-              
+
               if (newLeads.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 // New Leads Only FAB
@@ -243,7 +246,7 @@ class _LeadsScreenState extends State<LeadsScreen> {
                   heroTag: "auto_dial_new",
                 ),
               ],
-              
+
               if (callbackLeads.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 // Callback Leads FAB
@@ -466,8 +469,8 @@ class _LeadsScreenState extends State<LeadsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: lead.getStatusColor().withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
@@ -575,12 +578,12 @@ class _LeadsScreenState extends State<LeadsScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // SMS Button
+                  // WhatsApp Button
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _sendSMS(lead),
-                      icon: const Icon(Icons.message, size: 16),
-                      label: const Text('SMS'),
+                      onPressed: () => _sendWhatsAppMessage(lead),
+                      icon: const Icon(Icons.chat, size: 16),
+                      label: const Text('WhatsApp'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
@@ -653,21 +656,47 @@ class _LeadsScreenState extends State<LeadsScreen> {
     );
   }
 
-  // Send SMS to lead
-  Future<void> _sendSMS(Lead lead) async {
+  // Send WhatsApp message to lead
+  Future<void> _sendWhatsAppMessage(Lead lead) async {
     try {
-      final Uri smsUri = Uri(scheme: 'sms', path: lead.phone);
-      
-      if (await canLaunchUrl(smsUri)) {
-        await launchUrl(smsUri);
+      final success = await WhatsAppService.sendMessage(
+        phoneNumber: lead.phone,
+        message: WhatsAppService.getLeadMessage(
+          leadName: lead.name,
+          companyName: lead.company,
+        ),
+      );
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Text('WhatsApp opened for ${lead.name}'),
+                ],
+              ),
+              backgroundColor: const Color(0xFF25D366),
+            ),
+          );
+        }
       } else {
-        throw Exception('Cannot launch SMS app');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to open WhatsApp for ${lead.name}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to open SMS: ${e.toString()}'),
+            content: Text('Failed to open WhatsApp: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -695,15 +724,16 @@ class _LeadsScreenState extends State<LeadsScreen> {
     );
   }
 
-  void _handleQuickDisposition(Lead lead, String disposition, String status) async {
+  void _handleQuickDisposition(
+      Lead lead, String disposition, String status) async {
     final leadProvider = Provider.of<LeadProvider>(context, listen: false);
-    
+
     final success = await leadProvider.logCall(
       lead.id,
       disposition: disposition,
       leadStatus: status,
     );
-    
+
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -769,7 +799,7 @@ class _QuickDispositionSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Quick action buttons
           _buildQuickAction(
             'Interested',
@@ -806,7 +836,8 @@ class _QuickDispositionSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickAction(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildQuickAction(
+      String label, IconData icon, Color color, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
@@ -979,7 +1010,8 @@ class _FilterDialogState extends State<_FilterDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedStatus = Provider.of<LeadProvider>(context, listen: false).statusFilter;
+    _selectedStatus =
+        Provider.of<LeadProvider>(context, listen: false).statusFilter;
   }
 
   @override
