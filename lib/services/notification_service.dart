@@ -1,6 +1,7 @@
 // lib/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications = 
@@ -111,18 +112,18 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    final title = 'Follow-up Reminder';
+    const title = 'Follow-up Reminder';
     final body = 'Time to follow up with $leadName${remarks != null ? '\n$remarks' : ''}';
+
+    final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
 
     await _notifications.zonedSchedule(
       id,
       title,
       body,
-      scheduledTime,
+      tzScheduledTime,
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
       payload: 'follow_up:$id',
     );
   }

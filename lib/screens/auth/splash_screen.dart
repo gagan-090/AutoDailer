@@ -1,4 +1,4 @@
-// lib/screens/auth/splash_screen.dart - ENHANCED PROFESSIONAL DESIGN
+// lib/screens/auth/splash_screen.dart - MODERN ELEGANT SPLASH
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -207,46 +207,41 @@ class _SplashScreenState extends State<SplashScreen>
         animation: _backgroundAnimation,
         builder: (context, child) {
           return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.lerp(ThemeConfig.primaryBlue, ThemeConfig.primaryBlue.withOpacity(0.8), _backgroundAnimation.value)!,
-                  Color.lerp(ThemeConfig.primaryBlue.withOpacity(0.8), const Color(0xFF1A365D), _backgroundAnimation.value)!,
+            decoration: const BoxDecoration(
+              gradient: ThemeConfig.primaryGradient,
+            ),
+            child: SafeArea(
+              child: Stack(
+                children: [
+                  // Background decoration circles
+                  _buildBackgroundDecoration(),
+                  
+                  // Main content
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Spacer(flex: 2),
+                        
+                        // Logo section
+                        _buildLogo(),
+                        
+                        const SizedBox(height: ThemeConfig.spacingXL),
+                        
+                        // Text section
+                        _buildText(),
+                        
+                        const Spacer(flex: 2),
+                        
+                        // Progress section
+                        _buildProgress(),
+                        
+                        const SizedBox(height: 60),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-            child: Stack(
-              children: [
-                // Background decoration circles
-                _buildBackgroundDecoration(),
-                
-                // Main content
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Spacer(flex: 2),
-                      
-                      // Logo section
-                      _buildLogo(),
-                      
-                      const SizedBox(height: 32),
-                      
-                      // Text section
-                      _buildText(),
-                      
-                      const Spacer(flex: 2),
-                      
-                      // Progress section
-                      _buildProgress(),
-                      
-                      const SizedBox(height: 60),
-                    ],
-                  ),
-                ),
-              ],
             ),
           );
         },
@@ -269,7 +264,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Container(
                   width: 300,
                   height: 300,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
                   ),
@@ -286,7 +281,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Container(
                   width: 400,
                   height: 400,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
                   ),
@@ -303,7 +298,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Container(
                   width: 150,
                   height: 150,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
                   ),
@@ -329,24 +324,13 @@ class _SplashScreenState extends State<SplashScreen>
               height: 140,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 30,
-                    offset: const Offset(0, 15),
-                  ),
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(ThemeConfig.radiusXL),
+                boxShadow: ThemeConfig.elevatedShadow,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.phone_in_talk_rounded,
                 size: 70,
-                color: ThemeConfig.primaryBlue,
+                color: ThemeConfig.primaryColor,
               ),
             ),
           ),
@@ -370,7 +354,7 @@ class _SplashScreenState extends State<SplashScreen>
                   shaderCallback: (bounds) => LinearGradient(
                     colors: [
                       Colors.white,
-                      Colors.white.withOpacity(0.8),
+                      Colors.white.withValues(alpha: 0.8),
                       Colors.white,
                     ],
                     stops: [
@@ -380,7 +364,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ],
                   ).createShader(bounds),
                   child: const Text(
-                    'TeleEasyian',
+                    'TeleCRM',
                     style: TextStyle(
                       fontSize: 42,
                       fontWeight: FontWeight.w900,
@@ -390,31 +374,31 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: ThemeConfig.spacingM),
                 
                 // Tagline
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),
                   child: Text(
-                    'Professional Sales Management',
+                    'Modern Sales Management',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
                     ),
                   ),
                 ),
                 
-                const SizedBox(height: 8),
+                const SizedBox(height: ThemeConfig.spacingS),
                 
                 // Feature highlights
                 Row(
@@ -423,8 +407,6 @@ class _SplashScreenState extends State<SplashScreen>
                     _buildFeatureChip('Auto Dialer', Icons.phone),
                     const SizedBox(width: 12),
                     _buildFeatureChip('Lead Management', Icons.people),
-                    const SizedBox(width: 12),
-                    
                   ],
                 ),
               ],
@@ -439,10 +421,10 @@ class _SplashScreenState extends State<SplashScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           width: 1,
         ),
       ),
@@ -452,14 +434,14 @@ class _SplashScreenState extends State<SplashScreen>
           Icon(
             icon,
             size: 14,
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
           ),
           const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -477,7 +459,7 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             children: [
               // Progress indicator
-              Container(
+              SizedBox(
                 width: 60,
                 height: 60,
                 child: Stack(
@@ -488,7 +470,7 @@ class _SplashScreenState extends State<SplashScreen>
                       height: 60,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
                     
@@ -500,9 +482,9 @@ class _SplashScreenState extends State<SplashScreen>
                         child: CircularProgressIndicator(
                           strokeWidth: 3,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withOpacity(0.9),
+                            Colors.white.withValues(alpha: 0.9),
                           ),
-                          backgroundColor: Colors.white.withOpacity(0.2),
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
                         ),
                       ),
                     ),
@@ -510,14 +492,14 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
               
-              const SizedBox(height: 16),
+              const SizedBox(height: ThemeConfig.spacingM),
               
               // Loading text
               Text(
                 'Initializing...',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.5,
                 ),

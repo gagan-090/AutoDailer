@@ -1,8 +1,6 @@
 // lib/services/whatsapp_service.dart
 
 import 'package:url_launcher/url_launcher.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'dart:io';
 
 class WhatsAppService {
   static const String _whatsappScheme = 'whatsapp://send';

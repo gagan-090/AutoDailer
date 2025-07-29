@@ -1,8 +1,9 @@
-// lib/screens/auth/login_screen.dart - ENHANCED PROFESSIONAL DESIGN
+// lib/screens/auth/login_screen.dart - MODERN ELEGANT LOGIN
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/theme_config.dart';
+import '../../utils/animation_utils.dart';
 import '../dashboard/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -110,22 +111,31 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ThemeConfig.scaffoldBackground,
+      backgroundColor: ThemeConfig.backgroundColor,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: SlideTransition(
             position: _slideAnimation,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(ThemeConfig.spacingL),
               child: Column(
                 children: [
-                  const SizedBox(height: 40),
-                  _buildHeader(),
-                  const SizedBox(height: 48),
-                  _buildLoginForm(),
-                  const SizedBox(height: 32),
-                  _buildFooter(),
+                  const SizedBox(height: ThemeConfig.spacingXL),
+                  AnimationUtils.slideUp(
+                    child: _buildHeader(),
+                    delay: const Duration(milliseconds: 200),
+                  ),
+                  const SizedBox(height: ThemeConfig.spacingXXL),
+                  AnimationUtils.slideUp(
+                    child: _buildLoginForm(),
+                    delay: const Duration(milliseconds: 400),
+                  ),
+                  const SizedBox(height: ThemeConfig.spacingXL),
+                  AnimationUtils.slideUp(
+                    child: _buildFooter(),
+                    delay: const Duration(milliseconds: 600),
+                  ),
                 ],
               ),
             ),
@@ -138,29 +148,32 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   Widget _buildHeader() {
     return Column(
       children: [
-        // Logo with gradient background
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            gradient: ThemeConfig.primaryGradient,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: ThemeConfig.cardShadow,
+        // Logo with modern design
+        AnimationUtils.bounceIn(
+          child: Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              gradient: ThemeConfig.primaryGradient,
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusXL),
+              boxShadow: ThemeConfig.elevatedShadow,
+            ),
+            child: const Icon(
+              Icons.phone_in_talk_rounded,
+              size: 50,
+              color: Colors.white,
+            ),
           ),
-          child: const Icon(
-            Icons.phone_in_talk_rounded,
-            size: 50,
-            color: Colors.white,
-          ),
+          delay: const Duration(milliseconds: 300),
         ),
         
-        const SizedBox(height: 24),
+        const SizedBox(height: ThemeConfig.spacingL),
         
         // App name with gradient text effect
         ShaderMask(
           shaderCallback: (bounds) => ThemeConfig.primaryGradient.createShader(bounds),
           child: const Text(
-            'TeleEasyian',
+            'TeleCRM',
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w800,
@@ -170,10 +183,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ),
         ),
         
-        const SizedBox(height: 8),
+        const SizedBox(height: ThemeConfig.spacingS),
         
         Text(
-          'Professional Sales Management',
+          'Modern Sales Management',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: ThemeConfig.textSecondary,
             fontWeight: FontWeight.w500,
@@ -187,10 +200,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return Container(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(ThemeConfig.spacingXL),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            color: ThemeConfig.cardColor,
+            borderRadius: BorderRadius.circular(ThemeConfig.radiusXL),
             boxShadow: ThemeConfig.cardShadow,
           ),
           child: Form(
@@ -207,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   textAlign: TextAlign.center,
                 ),
                 
-                const SizedBox(height: 8),
+                const SizedBox(height: ThemeConfig.spacingS),
                 
                 Text(
                   'Sign in to continue to your account',
@@ -217,60 +230,66 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   textAlign: TextAlign.center,
                 ),
                 
-                const SizedBox(height: 32),
+                const SizedBox(height: ThemeConfig.spacingXL),
                 
                 // Username Field
-                _buildTextField(
-                  controller: _usernameController,
-                  label: 'Username',
-                  hint: 'Enter your username',
-                  prefixIcon: Icons.person_outline_rounded,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your username';
-                    }
-                    return null;
-                  },
-                  textInputAction: TextInputAction.next,
-                  enabled: !authProvider.isLoading,
+                AnimationUtils.slideInFromLeft(
+                  child: _buildTextField(
+                    controller: _usernameController,
+                    label: 'Username',
+                    hint: 'Enter your username',
+                    prefixIcon: Icons.person_outline_rounded,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your username';
+                      }
+                      return null;
+                    },
+                    textInputAction: TextInputAction.next,
+                    enabled: !authProvider.isLoading,
+                  ),
+                  delay: const Duration(milliseconds: 100),
                 ),
                 
-                const SizedBox(height: 20),
+                const SizedBox(height: ThemeConfig.spacingL),
                 
                 // Password Field
-                _buildTextField(
-                  controller: _passwordController,
-                  label: 'Password',
-                  hint: 'Enter your password',
-                  prefixIcon: Icons.lock_outline_rounded,
-                  obscureText: _obscurePassword,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: ThemeConfig.textSecondary,
+                AnimationUtils.slideInFromRight(
+                  child: _buildTextField(
+                    controller: _passwordController,
+                    label: 'Password',
+                    hint: 'Enter your password',
+                    prefixIcon: Icons.lock_outline_rounded,
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: ThemeConfig.textSecondary,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      return null;
                     },
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _handleLogin(),
+                    enabled: !authProvider.isLoading,
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    return null;
-                  },
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _handleLogin(),
-                  enabled: !authProvider.isLoading,
+                  delay: const Duration(milliseconds: 200),
                 ),
                 
-                const SizedBox(height: 20),
+                const SizedBox(height: ThemeConfig.spacingL),
                 
-                // Remember Me & Forgot Password
+                // Remember Me
                 Row(
                   children: [
                     Expanded(
@@ -287,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                                         _rememberMe = value ?? false;
                                       });
                                     },
-                              activeColor: ThemeConfig.primaryBlue,
+                              activeColor: ThemeConfig.accentColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -305,14 +324,17 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   ],
                 ),
                 
-                const SizedBox(height: 32),
+                const SizedBox(height: ThemeConfig.spacingXL),
                 
                 // Login Button
-                _buildLoginButton(authProvider),
+                AnimationUtils.scaleIn(
+                  child: _buildLoginButton(authProvider),
+                  delay: const Duration(milliseconds: 300),
+                ),
                 
                 // Error Message
                 if (authProvider.errorMessage != null) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: ThemeConfig.spacingL),
                   _buildErrorMessage(authProvider.errorMessage!),
                 ],
               ],
@@ -345,7 +367,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: ThemeConfig.spacingS),
         TextFormField(
           controller: controller,
           obscureText: obscureText,
@@ -361,22 +383,22 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             prefixIcon: Icon(prefixIcon, color: ThemeConfig.textSecondary),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: enabled ? ThemeConfig.accentBlue.withOpacity(0.3) : Colors.grey[100],
+            fillColor: enabled ? ThemeConfig.backgroundColor : Colors.grey[100],
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: ThemeConfig.dividerColor, width: 1),
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+              borderSide: BorderSide(color: ThemeConfig.secondaryColor, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: ThemeConfig.primaryBlue, width: 2),
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+              borderSide: const BorderSide(color: ThemeConfig.accentColor, width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: ThemeConfig.errorColor, width: 2),
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+              borderSide: const BorderSide(color: ThemeConfig.errorColor, width: 2),
             ),
           ),
         ),
@@ -385,67 +407,72 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
 
   Widget _buildLoginButton(AuthProvider authProvider) {
-    return Container(
-      height: 56,
-      decoration: BoxDecoration(
-        gradient: authProvider.isLoading ? null : ThemeConfig.primaryGradient,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: authProvider.isLoading ? null : ThemeConfig.buttonShadow,
-      ),
-      child: ElevatedButton(
-        onPressed: authProvider.isLoading ? null : _handleLogin,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: authProvider.isLoading ? Colors.grey[300] : Colors.transparent,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+    return AnimationUtils.rippleEffect(
+      onTap: authProvider.isLoading ? () {} : _handleLogin,
+      borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: authProvider.isLoading ? null : ThemeConfig.accentGradient,
+          borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+          boxShadow: authProvider.isLoading ? null : ThemeConfig.buttonShadow,
         ),
-        child: authProvider.isLoading
-            ? SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(ThemeConfig.primaryBlue),
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.login_rounded, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Sign In',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
+        child: ElevatedButton(
+          onPressed: authProvider.isLoading ? null : _handleLogin,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: authProvider.isLoading ? Colors.grey[300] : Colors.transparent,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+            ),
+          ),
+          child: authProvider.isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(ThemeConfig.primaryColor),
                   ),
-                ],
-              ),
+                )
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.login_rounded, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Sign In',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }
 
   Widget _buildErrorMessage(String message) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(ThemeConfig.spacingM),
       decoration: BoxDecoration(
-        color: ThemeConfig.accentRed,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ThemeConfig.errorColor.withOpacity(0.3)),
+        color: ThemeConfig.errorColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+        border: Border.all(color: ThemeConfig.errorColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.error_outline_rounded,
             color: ThemeConfig.errorColor,
             size: 20,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: ThemeConfig.spacingM),
           Expanded(
             child: Text(
               message,
@@ -465,11 +492,11 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       children: [
         // Demo Credentials (for development)
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(ThemeConfig.spacingL),
           decoration: BoxDecoration(
-            color: ThemeConfig.accentBlue.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: ThemeConfig.primaryBlue.withOpacity(0.2)),
+            color: ThemeConfig.accentColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+            border: Border.all(color: ThemeConfig.accentColor.withValues(alpha: 0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,30 +506,30 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: ThemeConfig.primaryBlue,
+                      color: ThemeConfig.accentColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.info_outline_rounded,
                       color: Colors.white,
                       size: 16,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: ThemeConfig.spacingM),
                   Text(
                     'Demo Access',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: ThemeConfig.primaryBlue,
+                      color: ThemeConfig.accentColor,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: ThemeConfig.spacingM),
               Text(
                 'Use any agent username from Django admin with the password set in your admin panel.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: ThemeConfig.primaryBlue.withOpacity(0.8),
+                  color: ThemeConfig.accentColor.withValues(alpha: 0.8),
                   height: 1.4,
                 ),
               ),
@@ -510,7 +537,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ),
         ),
         
-        const SizedBox(height: 24),
+        const SizedBox(height: ThemeConfig.spacingL),
         
         // App Version and Branding
         Row(
@@ -521,13 +548,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: ThemeConfig.cardShadow,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -535,14 +556,14 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: ThemeConfig.successColor,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'TeleEasyian v1.0.0',
+                    'TeleCRM v1.0.0',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: ThemeConfig.textSecondary,
                       fontWeight: FontWeight.w600,
@@ -554,7 +575,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           ],
         ),
         
-        const SizedBox(height: 16),
+        const SizedBox(height: ThemeConfig.spacingM),
         
         // Company branding
         Text.rich(
@@ -567,9 +588,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 ),
               ),
               TextSpan(
-                text: 'Easyian',
+                text: 'TeleCRM',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: ThemeConfig.primaryBlue,
+                  color: ThemeConfig.accentColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),

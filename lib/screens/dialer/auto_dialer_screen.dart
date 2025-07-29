@@ -1,11 +1,11 @@
-// lib/screens/dialer/auto_dialer_screen.dart - COMPLETE VERSION WITH DISPOSITION BUTTON
+// lib/screens/dialer/auto_dialer_screen.dart - MODERN ELEGANT AUTO DIALER
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
-import '../../providers/call_provider.dart';
 import '../../providers/lead_provider.dart';
 import '../../providers/follow_up_provider.dart';
 import '../../config/theme_config.dart';
+import '../../utils/animation_utils.dart';
 import '../../models/lead_model.dart';
 import '../../services/auto_dialer_service.dart';
 import 'disposition_dialog.dart';
@@ -27,11 +27,11 @@ class AutoDialerScreen extends StatefulWidget {
 class _AutoDialerScreenState extends State<AutoDialerScreen> {
   final AutoDialerService _dialerService = AutoDialerService();
   List<Lead> _leads = [];
-  
+
   // Stream subscriptions
   StreamSubscription<AutoDialerState>? _stateSubscription;
   StreamSubscription<AutoDialerEvent>? _eventSubscription;
-  
+
   // Current state
   AutoDialerState _currentState = AutoDialerState(
     isActive: false,
@@ -44,18 +44,18 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
     callConnectionConfirmed: false,
     callDuration: null,
   );
-  
+
   // Countdown timer for next call
   Timer? _countdownTimer;
   int _countdownSeconds = 0;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     final leadProvider = Provider.of<LeadProvider>(context, listen: false);
     _leads = widget.initialLeads ?? leadProvider.filteredLeads;
-    
+
     // Listen to dialer service streams
     _stateSubscription = _dialerService.stateStream.listen(_onStateChanged);
     _eventSubscription = _dialerService.eventStream.listen(_onEvent);
@@ -96,12 +96,12 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
   void _startCountdown(int seconds) {
     _countdownSeconds = seconds;
     _countdownTimer?.cancel();
-    
+
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _countdownSeconds--;
       });
-      
+
       if (_countdownSeconds <= 0) {
         timer.cancel();
       }
@@ -111,49 +111,85 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: ThemeConfig.backgroundColor,
       appBar: AppBar(
         title: const Text('Auto Dialer'),
         backgroundColor: ThemeConfig.primaryColor,
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _showSettingsDialog,
+          AnimationUtils.rippleEffect(
+            onTap: _showSettingsDialog,
+            child: const Padding(
+              padding: EdgeInsets.all(12.0),
+              child: Icon(Icons.settings_rounded),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.stop),
-            onPressed: _currentState.isActive ? _showStopConfirmation : null,
+          AnimationUtils.rippleEffect(
+            onTap:
+                _currentState.isActive ? () => _showStopConfirmation() : null,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Icon(
+                Icons.stop_rounded,
+                color: _currentState.isActive ? Colors.white : Colors.white54,
+              ),
+            ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildProgressHeader(),
-          if (_currentState.isCallInProgress) _buildCallStatusBanner(),
-          Expanded(
-            child: _currentState.currentLead != null
-                ? _buildCurrentLeadCard(_currentState.currentLead!)
-                : _buildCompletionState(),
-          ),
-          _buildControlButtons(),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Modern Progress Header
+            AnimationUtils.slideUp(
+              child: _buildProgressHeader(),
+              delay: const Duration(milliseconds: 100),
+            ),
+
+            // Call Status Banner
+            if (_currentState.isCallInProgress)
+              AnimationUtils.slideUp(
+                child: _buildCallStatusBanner(),
+                delay: const Duration(milliseconds: 200),
+              ),
+
+            // Main Content
+            Expanded(
+              child: _currentState.currentLead != null
+                  ? AnimationUtils.slideUp(
+                      child: _buildCurrentLeadCard(_currentState.currentLead!),
+                      delay: const Duration(milliseconds: 300),
+                    )
+                  : AnimationUtils.slideUp(
+                      child: _buildCompletionState(),
+                      delay: const Duration(milliseconds: 300),
+                    ),
+            ),
+
+            // Modern Control Buttons
+            AnimationUtils.slideUp(
+              child: _buildControlButtons(),
+              delay: const Duration(milliseconds: 400),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildCallStatusBanner() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: ThemeConfig.spacingM),
+      padding: const EdgeInsets.all(ThemeConfig.spacingL),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green[400]!, Colors.green[600]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: ThemeConfig.successGradient,
+        borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+        boxShadow: ThemeConfig.elevatedShadow,
       ),
       child: Column(
         children: [
+          // Call Status Header
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -165,16 +201,17 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: ThemeConfig.spacingS),
               const Text(
                 'CALL IN PROGRESS',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
+                  letterSpacing: 1.2,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: ThemeConfig.spacingS),
               Container(
                 width: 12,
                 height: 12,
@@ -185,46 +222,134 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+
+          const SizedBox(height: ThemeConfig.spacingS),
+
           Text(
             'Calling ${_currentState.currentLead?.name ?? ""}...',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 12),
+
+          const SizedBox(height: ThemeConfig.spacingL),
+
+          // Action Buttons
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ElevatedButton.icon(
-                onPressed: () => _dialerService.confirmCallConnection(),
-                icon: const Icon(Icons.check, size: 16),
-                label: const Text('Connected'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.green[600],
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              Expanded(
+                child: AnimationUtils.rippleEffect(
+                  onTap: () => _dialerService.confirmCallConnection(),
+                  borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ThemeConfig.spacingM,
+                      vertical: ThemeConfig.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.check_rounded,
+                          size: 16,
+                          color: ThemeConfig.successColor,
+                        ),
+                        const SizedBox(width: ThemeConfig.spacingXS),
+                        Text(
+                          'Connected',
+                          style: TextStyle(
+                            color: ThemeConfig.successColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () => _dialerService.reportCallFailed(),
-                icon: const Icon(Icons.close, size: 16),
-                label: const Text('Failed'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[100],
-                  foregroundColor: Colors.red[700],
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              const SizedBox(width: ThemeConfig.spacingS),
+              Expanded(
+                child: AnimationUtils.rippleEffect(
+                  onTap: () => _dialerService.reportCallFailed(),
+                  borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ThemeConfig.spacingM,
+                      vertical: ThemeConfig.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: ThemeConfig.errorColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                      border: Border.all(
+                        color: ThemeConfig.errorColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: ThemeConfig.errorColor,
+                        ),
+                        const SizedBox(width: ThemeConfig.spacingXS),
+                        const Text(
+                          'Failed',
+                          style: TextStyle(
+                            color: ThemeConfig.errorColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () => _showDispositionDialog(),
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Update'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[100],
-                  foregroundColor: Colors.orange[700],
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              const SizedBox(width: ThemeConfig.spacingS),
+              Expanded(
+                child: AnimationUtils.rippleEffect(
+                  onTap: () => _showDispositionDialog(),
+                  borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ThemeConfig.spacingM,
+                      vertical: ThemeConfig.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: ThemeConfig.warningColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                      border: Border.all(
+                        color: ThemeConfig.warningColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.edit_rounded,
+                          size: 16,
+                          color: ThemeConfig.warningColor,
+                        ),
+                        const SizedBox(width: ThemeConfig.spacingXS),
+                        const Text(
+                          'Update',
+                          style: TextStyle(
+                            color: ThemeConfig.warningColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -236,101 +361,168 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
 
   Widget _buildProgressHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(ThemeConfig.spacingM),
+      padding: const EdgeInsets.all(ThemeConfig.spacingL),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+        color: ThemeConfig.cardColor,
+        borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+        boxShadow: ThemeConfig.cardShadow,
       ),
       child: Column(
         children: [
+          // Progress Bar with Counter
           Row(
             children: [
               Expanded(
-                child: LinearProgressIndicator(
-                  value: _currentState.progress,
-                  backgroundColor: Colors.grey[300],
-                  valueColor: AlwaysStoppedAnimation<Color>(ThemeConfig.primaryColor),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${_currentState.currentIndex}/${_currentState.totalLeads}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem(
-                'Remaining',
-                _currentState.remainingLeads.toString(),
-                Icons.schedule,
-                Colors.orange,
-              ),
-              _buildStatItem(
-                'Completed',
-                _currentState.currentIndex.toString(),
-                Icons.check_circle,
-                Colors.green,
-              ),
-              _buildStatItem(
-                'Auto Delay',
-                '${_currentState.autoDialDelay}s',
-                Icons.timer,
-                ThemeConfig.primaryColor,
-              ),
-            ],
-          ),
-          if (_countdownSeconds > 0) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.orange[100],
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.orange[300]!),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.timer, color: Colors.orange[700], size: 16),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Next call in $_countdownSeconds seconds',
-                    style: TextStyle(
-                      color: Colors.orange[700],
-                      fontWeight: FontWeight.w600,
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: ThemeConfig.secondaryColor,
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _currentState.progress,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: ThemeConfig.accentGradient,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      _countdownTimer?.cancel();
-                      _countdownSeconds = 0;
-                      _dialerService.dialCurrentLead();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                ),
+              ),
+              const SizedBox(width: ThemeConfig.spacingM),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ThemeConfig.spacingM,
+                  vertical: ThemeConfig.spacingS,
+                ),
+                decoration: BoxDecoration(
+                  color: ThemeConfig.accentColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                ),
+                child: Text(
+                  '${_currentState.currentIndex}/${_currentState.totalLeads}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: ThemeConfig.accentColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: ThemeConfig.spacingL),
+
+          // Stats Row
+          Row(
+            children: [
+              Expanded(
+                child: AnimationUtils.staggeredListItem(
+                  index: 0,
+                  child: _buildStatItem(
+                    'Remaining',
+                    _currentState.remainingLeads,
+                    Icons.schedule_rounded,
+                    ThemeConfig.warningColor,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: AnimationUtils.staggeredListItem(
+                  index: 1,
+                  child: _buildStatItem(
+                    'Completed',
+                    _currentState.currentIndex,
+                    Icons.check_circle_rounded,
+                    ThemeConfig.successColor,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: AnimationUtils.staggeredListItem(
+                  index: 2,
+                  child: _buildStatItem(
+                    'Auto Delay',
+                    _currentState.autoDialDelay,
+                    Icons.timer_rounded,
+                    ThemeConfig.infoColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Countdown Timer
+          if (_countdownSeconds > 0) ...[
+            const SizedBox(height: ThemeConfig.spacingL),
+            AnimationUtils.scaleIn(
+              child: Container(
+                padding: const EdgeInsets.all(ThemeConfig.spacingM),
+                decoration: BoxDecoration(
+                  color: ThemeConfig.warningColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+                  border: Border.all(
+                    color: ThemeConfig.warningColor.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(ThemeConfig.spacingS),
                       decoration: BoxDecoration(
-                        color: Colors.orange[600],
-                        borderRadius: BorderRadius.circular(12),
+                        color: ThemeConfig.warningColor.withValues(alpha: 0.2),
+                        borderRadius:
+                            BorderRadius.circular(ThemeConfig.radiusS),
                       ),
-                      child: const Text(
-                        'Call Now',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                      child: const Icon(
+                        Icons.timer_rounded,
+                        color: ThemeConfig.warningColor,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: ThemeConfig.spacingM),
+                    Expanded(
+                      child: Text(
+                        'Next call in $_countdownSeconds seconds',
+                        style: const TextStyle(
+                          color: ThemeConfig.warningColor,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    AnimationUtils.rippleEffect(
+                      onTap: () {
+                        _countdownTimer?.cancel();
+                        _countdownSeconds = 0;
+                        _dialerService.dialCurrentLead();
+                      },
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: ThemeConfig.spacingM,
+                          vertical: ThemeConfig.spacingS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: ThemeConfig.warningColor,
+                          borderRadius:
+                              BorderRadius.circular(ThemeConfig.radiusS),
+                        ),
+                        child: const Text(
+                          'Call Now',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -339,184 +531,351 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
+  Widget _buildStatItem(String label, int value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(ThemeConfig.spacingM),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(ThemeConfig.spacingS),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+            ),
+            child: Icon(icon, color: color, size: 20),
           ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+          const SizedBox(height: ThemeConfig.spacingS),
+          AnimationUtils.animatedCounter(
+            value: value,
+            textStyle: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: ThemeConfig.spacingXS),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: ThemeConfig.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildCurrentLeadCard(Lead lead) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(ThemeConfig.spacingM),
       child: Column(
         children: [
-          Card(
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: lead.getStatusColor().withOpacity(0.1),
-                    child: Icon(
-                      lead.getStatusIcon(),
-                      color: lead.getStatusColor(),
-                      size: 40,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    lead.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: ThemeConfig.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          lead.phone,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: ThemeConfig.primaryColor,
-                          ),
-                        ),
-                      ),
-                      if (_currentState.isCallInProgress) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.phone, color: Colors.white, size: 12),
-                              SizedBox(width: 4),
-                              Text(
-                                'CALLING',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (lead.company != null) ...[
-                    Text(
-                      lead.company!,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: lead.getStatusColor().withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: lead.getStatusColor().withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      lead.statusDisplay,
-                      style: TextStyle(
-                        color: lead.getStatusColor(),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          // Main Lead Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(ThemeConfig.spacingXL),
+            decoration: BoxDecoration(
+              color: ThemeConfig.cardColor,
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusXL),
+              boxShadow: ThemeConfig.elevatedShadow,
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Lead Information',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoRow('Email', lead.email ?? 'Not provided'),
-                  _buildInfoRow('Source', lead.source ?? 'Unknown'),
-                  _buildInfoRow('Calls Made', lead.callCount.toString()),
-                  _buildInfoRow('Last Call', lead.lastCallDisposition ?? 'None'),
-                ],
-              ),
-            ),
-          ),
-          if (lead.notes != null && lead.notes!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              children: [
+                // Lead Avatar with Status Badge
+                Stack(
                   children: [
-                    const Text(
-                      'Notes',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    AnimationUtils.bounceIn(
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              lead.getStatusColor(),
+                              lead.getStatusColor().withValues(alpha: 0.7),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(ThemeConfig.radiusXL),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  lead.getStatusColor().withValues(alpha: 0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            lead.name.isNotEmpty
+                                ? lead.name[0].toUpperCase()
+                                : 'L',
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
+                      delay: const Duration(milliseconds: 200),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      lead.notes!,
-                      style: TextStyle(
-                        color: Colors.grey[700],
+
+                    // Status Badge
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: ThemeConfig.spacingS,
+                          vertical: ThemeConfig.spacingXS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: lead.getStatusColor(),
+                          borderRadius:
+                              BorderRadius.circular(ThemeConfig.radiusS),
+                          boxShadow: ThemeConfig.cardShadow,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              lead.getStatusIcon(),
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: ThemeConfig.spacingXS),
+                            Text(
+                              lead.statusDisplay.toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
+
+                const SizedBox(height: ThemeConfig.spacingL),
+
+                // Lead Name
+                Text(
+                  lead.name,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeConfig.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: ThemeConfig.spacingM),
+
+                // Phone Number with Call Status
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: ThemeConfig.spacingL,
+                        vertical: ThemeConfig.spacingM,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ThemeConfig.backgroundColor,
+                        borderRadius:
+                            BorderRadius.circular(ThemeConfig.radiusL),
+                        border: Border.all(
+                          color: ThemeConfig.accentColor.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Text(
+                        lead.phone,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: ThemeConfig.textPrimary,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    if (_currentState.isCallInProgress) ...[
+                      const SizedBox(width: ThemeConfig.spacingM),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: ThemeConfig.spacingM,
+                          vertical: ThemeConfig.spacingS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: ThemeConfig.successColor,
+                          borderRadius:
+                              BorderRadius.circular(ThemeConfig.radiusS),
+                          boxShadow: ThemeConfig.cardShadow,
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.phone_rounded,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                            SizedBox(width: ThemeConfig.spacingXS),
+                            Text(
+                              'CALLING',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                if (lead.company != null) ...[
+                  const SizedBox(height: ThemeConfig.spacingM),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ThemeConfig.spacingM,
+                      vertical: ThemeConfig.spacingS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: ThemeConfig.infoColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.business_rounded,
+                          size: 14,
+                          color: ThemeConfig.infoColor,
+                        ),
+                        const SizedBox(width: ThemeConfig.spacingXS),
+                        Text(
+                          lead.company!,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: ThemeConfig.infoColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: ThemeConfig.spacingL),
+
+          // Lead Information Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(ThemeConfig.spacingL),
+            decoration: BoxDecoration(
+              color: ThemeConfig.cardColor,
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+              boxShadow: ThemeConfig.cardShadow,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Lead Information',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: ThemeConfig.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: ThemeConfig.spacingL),
+                _buildInfoRow('Email', lead.email ?? 'Not provided'),
+                _buildInfoRow('Source', lead.source ?? 'Unknown'),
+                _buildInfoRow('Calls Made', lead.callCount.toString()),
+                _buildInfoRow('Last Call', lead.lastCallDisposition ?? 'None'),
+              ],
+            ),
+          ),
+
+          // Notes Card
+          if (lead.notes != null && lead.notes!.isNotEmpty) ...[
+            const SizedBox(height: ThemeConfig.spacingL),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(ThemeConfig.spacingL),
+              decoration: BoxDecoration(
+                color: ThemeConfig.cardColor,
+                borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+                boxShadow: ThemeConfig.cardShadow,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(ThemeConfig.spacingS),
+                        decoration: BoxDecoration(
+                          color:
+                              ThemeConfig.warningColor.withValues(alpha: 0.1),
+                          borderRadius:
+                              BorderRadius.circular(ThemeConfig.radiusS),
+                        ),
+                        child: const Icon(
+                          Icons.note_rounded,
+                          size: 16,
+                          color: ThemeConfig.warningColor,
+                        ),
+                      ),
+                      const SizedBox(width: ThemeConfig.spacingM),
+                      const Text(
+                        'Notes',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: ThemeConfig.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: ThemeConfig.spacingM),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(ThemeConfig.spacingM),
+                    decoration: BoxDecoration(
+                      color: ThemeConfig.backgroundColor,
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                    ),
+                    child: Text(
+                      lead.notes!,
+                      style: const TextStyle(
+                        color: ThemeConfig.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -527,24 +886,29 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: ThemeConfig.spacingS),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80,
+            width: 100,
             child: Text(
               '$label:',
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
+                color: ThemeConfig.textSecondary,
+                fontSize: 14,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 14),
+              style: const TextStyle(
+                fontSize: 14,
+                color: ThemeConfig.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -600,7 +964,8 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            if (_currentState.currentLead != null && _currentState.isActive) ...[
+            if (_currentState.currentLead != null &&
+                _currentState.isActive) ...[
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -613,11 +978,13 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                     size: 24,
                   ),
                   label: Text(
-                    _currentState.isCallInProgress ? 'Update Disposition' : 'Call Now',
+                    _currentState.isCallInProgress
+                        ? 'Update Disposition'
+                        : 'Call Now',
                     style: const TextStyle(fontSize: 18),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _currentState.isCallInProgress 
+                    backgroundColor: _currentState.isCallInProgress
                         ? Colors.orange
                         : ThemeConfig.primaryColor,
                     foregroundColor: Colors.white,
@@ -897,7 +1264,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Time Selection
                 const Text(
                   'Follow-up Time',
@@ -939,7 +1306,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Remarks
                 const Text(
                   'Follow-up Notes',
@@ -961,7 +1328,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Quick Options
                 const Text(
                   'Quick Options',
@@ -978,7 +1345,8 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                       label: const Text('Tomorrow 10 AM'),
                       onPressed: () {
                         setState(() {
-                          selectedDate = DateTime.now().add(const Duration(days: 1));
+                          selectedDate =
+                              DateTime.now().add(const Duration(days: 1));
                           selectedTime = const TimeOfDay(hour: 10, minute: 0);
                         });
                       },
@@ -987,7 +1355,8 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                       label: const Text('Next Week'),
                       onPressed: () {
                         setState(() {
-                          selectedDate = DateTime.now().add(const Duration(days: 7));
+                          selectedDate =
+                              DateTime.now().add(const Duration(days: 7));
                           selectedTime = const TimeOfDay(hour: 10, minute: 0);
                         });
                       },
@@ -996,7 +1365,8 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
                       label: const Text('Next Month'),
                       onPressed: () {
                         setState(() {
-                          selectedDate = DateTime.now().add(const Duration(days: 30));
+                          selectedDate =
+                              DateTime.now().add(const Duration(days: 30));
                           selectedTime = const TimeOfDay(hour: 10, minute: 0);
                         });
                       },
@@ -1037,11 +1407,7 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
 
   // NEW: Save Follow-up Method
   Future<void> _saveFollowUp(
-    Lead lead, 
-    DateTime date, 
-    TimeOfDay time, 
-    String remarks
-  ) async {
+      Lead lead, DateTime date, TimeOfDay time, String remarks) async {
     try {
       final followUpDateTime = DateTime(
         date.year,
@@ -1052,16 +1418,19 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
       );
 
       // Format time for API (HH:mm format)
-      final timeString = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      final timeString =
+          '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 
       // Use your follow-up provider to create follow-up
-      final followUpProvider = Provider.of<FollowUpProvider>(context, listen: false);
-      
+      final followUpProvider =
+          Provider.of<FollowUpProvider>(context, listen: false);
+
       final success = await followUpProvider.createFollowUp(
         leadId: lead.id,
         followUpDate: followUpDateTime,
         followUpTime: timeString,
-        remarks: remarks.isEmpty ? 'Follow-up scheduled from auto dialer' : remarks,
+        remarks:
+            remarks.isEmpty ? 'Follow-up scheduled from auto dialer' : remarks,
       );
 
       if (success && mounted) {
@@ -1083,11 +1452,12 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
             duration: const Duration(seconds: 4),
           ),
         );
-        
+
         // Refresh follow-ups list
         await followUpProvider.loadFollowUps(refresh: true);
       } else if (mounted) {
-        final errorMsg = followUpProvider.errorMessage ?? 'Failed to schedule follow-up. Please try again.';
+        final errorMsg = followUpProvider.errorMessage ??
+            'Failed to schedule follow-up. Please try again.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMsg),
@@ -1199,7 +1569,8 @@ class _AutoDialerScreenState extends State<AutoDialerScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Congratulations! You have successfully called all leads in the queue.'),
+            const Text(
+                'Congratulations! You have successfully called all leads in the queue.'),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -1329,7 +1700,8 @@ class _AutoDialerSettingsDialog extends StatefulWidget {
   });
 
   @override
-  State<_AutoDialerSettingsDialog> createState() => _AutoDialerSettingsDialogState();
+  State<_AutoDialerSettingsDialog> createState() =>
+      _AutoDialerSettingsDialogState();
 }
 
 class _AutoDialerSettingsDialogState extends State<_AutoDialerSettingsDialog> {

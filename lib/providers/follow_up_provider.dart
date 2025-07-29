@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import '../models/follow_up_model.dart';
 import '../services/api_service.dart';
-import '../models/user_model.dart';
 
 class FollowUpProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();

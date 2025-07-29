@@ -1,10 +1,11 @@
-// lib/screens/leads/leads_screen.dart - REPLACE ORIGINAL FILE
+// lib/screens/leads/leads_screen.dart - MODERN ELEGANT LEADS SCREEN
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+
 import '../../providers/lead_provider.dart';
 import '../../providers/call_provider.dart';
 import '../../config/theme_config.dart';
+import '../../utils/animation_utils.dart';
 import '../../models/lead_model.dart';
 import 'lead_detail_screen.dart';
 import '../dialer/auto_dialer_screen.dart';
@@ -79,6 +80,9 @@ class _LeadsScreenState extends State<LeadsScreen> {
   }
 
   void _startAutoDialer(BuildContext context, List<Lead> leads) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     if (leads.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No leads available to call')),
@@ -89,48 +93,86 @@ class _LeadsScreenState extends State<LeadsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+        ),
         title: Row(
           children: [
-            Icon(Icons.auto_mode, color: ThemeConfig.primaryColor),
-            const SizedBox(width: 8),
-            const Text('Start Auto Dialer'),
+            Container(
+              padding: const EdgeInsets.all(ThemeConfig.spacingS),
+              decoration: BoxDecoration(
+                color: ThemeConfig.accentColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+              ),
+              child: const Icon(
+                Icons.auto_mode_rounded,
+                color: ThemeConfig.accentColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: ThemeConfig.spacingM),
+            Text(
+              'Start Auto Dialer',
+              style: TextStyle(
+                color: isDark ? ThemeConfig.darkTextPrimary : ThemeConfig.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ready to start auto-dialing ${leads.length} leads?'),
-            const SizedBox(height: 16),
+            Text(
+              'Ready to start auto-dialing ${leads.length} leads?',
+              style: TextStyle(
+                color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: ThemeConfig.spacingL),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(ThemeConfig.spacingL),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
+                color: ThemeConfig.accentColor.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+                border: Border.all(
+                  color: ThemeConfig.accentColor.withValues(alpha: 0.2),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.auto_awesome,
-                          color: Colors.blue[700], size: 20),
-                      const SizedBox(width: 8),
-                      const Text(
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: ThemeConfig.accentColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: ThemeConfig.spacingS),
+                      Text(
                         'Auto Dialer Features:',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? ThemeConfig.darkTextPrimary : ThemeConfig.textPrimary,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  const SizedBox(height: ThemeConfig.spacingM),
+                  Text(
                     '• Automatically dials leads in sequence\n'
                     '• Configurable delays between calls\n'
                     '• Auto-progression after dispositions\n'
                     '• Skip leads or pause anytime\n'
                     '• Real-time progress tracking',
-                    style: TextStyle(fontSize: 13),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
@@ -140,26 +182,45 @@ class _LeadsScreenState extends State<LeadsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+            ),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => AutoDialerScreen(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      AutoDialerScreen(
                     initialLeads: leads,
                     startIndex: 0,
                   ),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1.0, 0.0),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeInOut,
+                        )),
+                        child: child,
+                      ),
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 400),
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ThemeConfig.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Start Auto Dialing'),
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Start Auto Dialing'),
+            style: ThemeConfig.primaryButtonStyle,
           ),
         ],
       ),
@@ -174,148 +235,155 @@ class _LeadsScreenState extends State<LeadsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('My Leads'),
-        backgroundColor: ThemeConfig.primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.appBarTheme.foregroundColor,
+        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterDialog,
+          AnimationUtils.rippleEffect(
+            onTap: _showFilterDialog,
+            child: const Padding(
+              padding: EdgeInsets.all(12.0),
+              child: Icon(Icons.filter_list_rounded),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
+          AnimationUtils.rippleEffect(
+            onTap: () {
               Provider.of<LeadProvider>(context, listen: false)
                   .loadLeads(refresh: true);
             },
+            child: const Padding(
+              padding: EdgeInsets.all(12.0),
+              child: Icon(Icons.refresh_rounded),
+            ),
           ),
         ],
       ),
       body: Consumer<LeadProvider>(
         builder: (context, leadProvider, child) {
           if (leadProvider.isLoading && leadProvider.leads.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                color: theme.colorScheme.secondary,
+              ),
+            );
           }
 
           if (leadProvider.errorMessage != null) {
             return _buildErrorState(leadProvider);
           }
 
-          return Column(
-            children: [
-              _buildSearchAndStats(leadProvider),
-              Expanded(
-                child: _buildLeadsList(leadProvider),
-              ),
-            ],
+          return SafeArea(
+            child: Column(
+              children: [
+                AnimationUtils.slideUp(
+                  child: _buildSearchAndStats(leadProvider),
+                  delay: const Duration(milliseconds: 100),
+                ),
+                Expanded(
+                  child: _buildLeadsList(leadProvider),
+                ),
+              ],
+            ),
           );
         },
       ),
-      floatingActionButton: Consumer<LeadProvider>(
-        builder: (context, leadProvider, child) {
-          final leads = leadProvider.filteredLeads;
-          final newLeads = leads.where((lead) => lead.status == 'new').toList();
-          final callbackLeads =
-              leads.where((lead) => lead.status == 'callback').toList();
-
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Auto Dialer FAB for All Leads
-              if (leads.isNotEmpty)
-                FloatingActionButton.extended(
-                  onPressed: () => _startAutoDialer(context, leads),
-                  backgroundColor: ThemeConfig.primaryColor,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.auto_mode),
-                  label: Text('Auto Dial (${leads.length})'),
-                  heroTag: "auto_dial_all",
-                ),
-
-              if (newLeads.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                // New Leads Only FAB
-                FloatingActionButton.extended(
-                  onPressed: () => _startAutoDialer(context, newLeads),
-                  backgroundColor: ThemeConfig.successColor,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.fiber_new),
-                  label: Text('New (${newLeads.length})'),
-                  heroTag: "auto_dial_new",
-                ),
-              ],
-
-              if (callbackLeads.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                // Callback Leads FAB
-                FloatingActionButton.extended(
-                  onPressed: () => _startAutoDialer(context, callbackLeads),
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.schedule),
-                  label: Text('Callbacks (${callbackLeads.length})'),
-                  heroTag: "auto_dial_callback",
-                ),
-              ],
-            ],
-          );
-        },
-      ),
+      floatingActionButton: _buildAnimatedFABs(),
     );
   }
 
   Widget _buildSearchAndStats(LeadProvider leadProvider) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(ThemeConfig.spacingM),
       child: Column(
         children: [
-          // Search bar
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search leads...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        leadProvider.setSearchQuery('');
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+          // Modern Search bar
+          Container(
+            decoration: BoxDecoration(
+              color: theme.cardTheme.color,
+              borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+              boxShadow: isDark ? ThemeConfig.darkCardShadow : ThemeConfig.cardShadow,
             ),
-            onChanged: (value) {
-              leadProvider.setSearchQuery(value);
-            },
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search leads...',
+                hintStyle: TextStyle(color: isDark ? ThemeConfig.darkTextTertiary : ThemeConfig.textTertiary),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? AnimationUtils.rippleEffect(
+                        onTap: () {
+                          _searchController.clear();
+                          leadProvider.setSearchQuery('');
+                        },
+                        child: Icon(
+                          Icons.clear_rounded,
+                          color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+                        ),
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: theme.cardTheme.color,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: ThemeConfig.spacingM,
+                  vertical: ThemeConfig.spacingM,
+                ),
+              ),
+              onChanged: (value) {
+                leadProvider.setSearchQuery(value);
+              },
+            ),
           ),
-          const SizedBox(height: 12),
-          // Quick stats
+          const SizedBox(height: ThemeConfig.spacingM),
+          // Modern Stats Chips
           Row(
             children: [
               Expanded(
-                child: _buildStatChip(
-                  'Total: ${leadProvider.filteredLeads.length}',
-                  Colors.blue,
+                child: AnimationUtils.staggeredListItem(
+                  index: 0,
+                  child: _buildStatChip(
+                    'Total',
+                    leadProvider.filteredLeads.length,
+                    ThemeConfig.infoColor,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: ThemeConfig.spacingS),
               Expanded(
-                child: _buildStatChip(
-                  'New: ${leadProvider.getLeadsByStatus('new').length}',
-                  Colors.green,
+                child: AnimationUtils.staggeredListItem(
+                  index: 1,
+                  child: _buildStatChip(
+                    'New',
+                    leadProvider.getLeadsByStatus('new').length,
+                    ThemeConfig.successColor,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: ThemeConfig.spacingS),
               Expanded(
-                child: _buildStatChip(
-                  'Callback: ${leadProvider.getLeadsByStatus('callback').length}',
-                  Colors.orange,
+                child: AnimationUtils.staggeredListItem(
+                  index: 2,
+                  child: _buildStatChip(
+                    'Callback',
+                    leadProvider.getLeadsByStatus('callback').length,
+                    ThemeConfig.warningColor,
+                  ),
                 ),
               ),
             ],
@@ -325,138 +393,228 @@ class _LeadsScreenState extends State<LeadsScreen> {
     );
   }
 
-  Widget _buildStatChip(String text, Color color) {
+  Widget _buildStatChip(String label, int count, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+      padding: const EdgeInsets.symmetric(
+        vertical: ThemeConfig.spacingS,
+        horizontal: ThemeConfig.spacingM,
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-        textAlign: TextAlign.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          AnimationUtils.animatedCounter(
+            value: count,
+            textStyle: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: ThemeConfig.spacingXS),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildLeadsList(LeadProvider leadProvider) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final leads = leadProvider.filteredLeads;
 
     if (leads.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.people_outline,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              leadProvider.searchQuery.isNotEmpty ||
-                      leadProvider.statusFilter.isNotEmpty
-                  ? 'No leads match your filters'
-                  : 'No leads assigned yet',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
+        child: AnimationUtils.slideUp(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.people_outline_rounded,
+                size: 64,
+                color: isDark ? ThemeConfig.darkTextTertiary : ThemeConfig.textTertiary,
               ),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                leadProvider.clearFilters();
-              },
-              child: const Text('Clear filters'),
-            ),
-          ],
+              const SizedBox(height: ThemeConfig.spacingL),
+              Text(
+                leadProvider.searchQuery.isNotEmpty ||
+                        leadProvider.statusFilter.isNotEmpty
+                    ? 'No leads match your filters'
+                    : 'No leads assigned yet',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: ThemeConfig.spacingM),
+              ElevatedButton.icon(
+                onPressed: () {
+                  leadProvider.clearFilters();
+                },
+                icon: const Icon(Icons.clear_all_rounded),
+                label: const Text('Clear filters'),
+                style: ThemeConfig.primaryButtonStyle,
+              ),
+            ],
+          ),
+          delay: const Duration(milliseconds: 300),
         ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: () => leadProvider.loadLeads(refresh: true),
+      color: ThemeConfig.accentColor,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(
+          ThemeConfig.spacingM,
+          0,
+          ThemeConfig.spacingM,
+          100, // Extra padding for FABs
+        ),
         itemCount: leads.length,
         itemBuilder: (context, index) {
           final lead = leads[index];
-          return _buildEnhancedLeadCard(lead);
+          return AnimationUtils.staggeredListItem(
+            index: index,
+            delay: const Duration(milliseconds: 50),
+            child: _buildEnhancedLeadCard(lead),
+          );
         },
       ),
     );
   }
 
   Widget _buildEnhancedLeadCard(Lead lead) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: ThemeConfig.spacingM),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
+        boxShadow: isDark ? ThemeConfig.darkCardShadow : ThemeConfig.cardShadow,
+      ),
+      child: AnimationUtils.rippleEffect(
         onTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => LeadDetailScreen(lead: lead),
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  LeadDetailScreen(lead: lead),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOut,
+                    )),
+                    child: child,
+                  ),
+                );
+              },
+              transitionDuration: const Duration(milliseconds: 300),
             ),
           );
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(ThemeConfig.radiusL),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(ThemeConfig.spacingL),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header Row
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Lead Avatar
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: lead.getStatusColor().withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusM),
+                    ),
+                    child: Center(
+                      child: Text(
+                        lead.name.isNotEmpty ? lead.name[0].toUpperCase() : 'L',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: lead.getStatusColor(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: ThemeConfig.spacingM),
+                  // Lead Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           lead.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: isDark ? ThemeConfig.darkTextPrimary : ThemeConfig.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: ThemeConfig.spacingXS),
                         Row(
                           children: [
                             Icon(
-                              Icons.phone,
+                              Icons.phone_rounded,
                               size: 14,
-                              color: Colors.grey[600],
+                              color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              lead.phone,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
+                            const SizedBox(width: ThemeConfig.spacingXS),
+                            Flexible(
+                              child: Text(
+                                lead.phone,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
                         if (lead.company != null) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: ThemeConfig.spacingXS),
                           Row(
                             children: [
                               Icon(
-                                Icons.business,
+                                Icons.business_rounded,
                                 size: 14,
-                                color: Colors.grey[500],
+                                color: isDark ? ThemeConfig.darkTextTertiary : ThemeConfig.textTertiary,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                lead.company!,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[500],
+                              const SizedBox(width: ThemeConfig.spacingXS),
+                              Flexible(
+                                child: Text(
+                                  lead.company!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? ThemeConfig.darkTextTertiary : ThemeConfig.textTertiary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -465,144 +623,212 @@ class _LeadsScreenState extends State<LeadsScreen> {
                       ],
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: lead.getStatusColor().withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: lead.getStatusColor().withOpacity(0.3),
+                  // Status Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ThemeConfig.spacingS,
+                      vertical: ThemeConfig.spacingXS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: lead.getStatusColor().withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                      border: Border.all(
+                        color: lead.getStatusColor().withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          lead.getStatusIcon(),
+                          size: 12,
+                          color: lead.getStatusColor(),
+                        ),
+                        const SizedBox(width: ThemeConfig.spacingXS),
+                        Text(
+                          lead.statusDisplay,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: lead.getStatusColor(),
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              lead.getStatusIcon(),
-                              size: 14,
-                              color: lead.getStatusColor(),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              lead.statusDisplay,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: lead.getStatusColor(),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // Meta Info Row
+              const SizedBox(height: ThemeConfig.spacingM),
+              Row(
+                children: [
+                  if (lead.callCount > 0) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: ThemeConfig.spacingS,
+                        vertical: ThemeConfig.spacingXS,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
+                      decoration: BoxDecoration(
+                        color: ThemeConfig.infoColor.withValues(alpha: 0.1),
+                        borderRadius:
+                            BorderRadius.circular(ThemeConfig.radiusS),
+                      ),
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (lead.callCount > 0) ...[
-                            Icon(
-                              Icons.phone_callback,
-                              size: 14,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '${lead.callCount}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: Colors.grey[600],
+                          const Icon(
+                            Icons.phone_callback_rounded,
+                            size: 12,
+                            color: ThemeConfig.infoColor,
                           ),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: ThemeConfig.spacingXS),
                           Text(
-                            _formatDate(lead.createdAt),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
+                            '${lead.callCount} calls',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: ThemeConfig.infoColor,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: ThemeConfig.spacingS),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ThemeConfig.spacingS,
+                      vertical: ThemeConfig.spacingXS,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (isDark ? ThemeConfig.darkTextTertiary : ThemeConfig.textTertiary).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 12,
+                          color: isDark ? ThemeConfig.darkTextTertiary : ThemeConfig.textTertiary,
+                        ),
+                        const SizedBox(width: ThemeConfig.spacingXS),
+                        Text(
+                          _formatDate(lead.createdAt),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isDark ? ThemeConfig.darkTextTertiary : ThemeConfig.textTertiary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
+
+              // Notes Section
               if (lead.notes != null && lead.notes!.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: ThemeConfig.spacingM),
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(ThemeConfig.spacingM),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(6),
+                    color: isDark ? ThemeConfig.darkBackgroundColor : ThemeConfig.backgroundColor,
+                    borderRadius: BorderRadius.circular(ThemeConfig.radiusS),
                   ),
                   child: Text(
                     lead.notes!,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[700],
+                      color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+                      height: 1.4,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
-              // Enhanced Action buttons
+
+              const SizedBox(height: ThemeConfig.spacingL),
+
+              // CRITICAL OVERFLOW FIX: Action Buttons with Flexible Layout
               Row(
                 children: [
                   // Call Button (Primary)
-                  Expanded(
+                  Flexible(
                     flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _makeDirectCall(lead),
-                      icon: const Icon(Icons.phone, size: 16),
-                      label: const Text('Call Now'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ThemeConfig.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _makeDirectCall(lead),
+                        icon: const Icon(Icons.phone_rounded, size: 16),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Call'),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ThemeConfig.accentColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: ThemeConfig.spacingS),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(ThemeConfig.radiusS),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: ThemeConfig.spacingS),
                   // WhatsApp Button
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _sendWhatsAppMessage(lead),
-                      icon: const Icon(Icons.chat, size: 16),
-                      label: const Text('WhatsApp'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  Flexible(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _sendWhatsAppMessage(lead),
+                        icon: const Icon(Icons.chat_rounded, size: 16),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Chat'),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ThemeConfig.successColor,
+                          side:
+                              const BorderSide(color: ThemeConfig.successColor),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: ThemeConfig.spacingS),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(ThemeConfig.radiusS),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: ThemeConfig.spacingS),
                   // Update Status Button
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _updateStatus(lead),
-                      icon: const Icon(Icons.edit, size: 16),
-                      label: const Text('Update'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  Flexible(
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _updateStatus(lead),
+                        icon: const Icon(Icons.edit_rounded, size: 16),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Edit'),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ThemeConfig.primaryColor,
+                          side:
+                              const BorderSide(color: ThemeConfig.primaryColor),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: ThemeConfig.spacingS),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(ThemeConfig.radiusS),
+                          ),
                         ),
                       ),
                     ),
@@ -617,41 +843,60 @@ class _LeadsScreenState extends State<LeadsScreen> {
   }
 
   Widget _buildErrorState(LeadProvider leadProvider) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red[400],
+      child: AnimationUtils.slideUp(
+        child: Padding(
+          padding: const EdgeInsets.all(ThemeConfig.spacingXL),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(ThemeConfig.spacingL),
+                decoration: BoxDecoration(
+                  color: ThemeConfig.errorColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(ThemeConfig.radiusXL),
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  size: 64,
+                  color: ThemeConfig.errorColor,
+                ),
+              ),
+              const SizedBox(height: ThemeConfig.spacingL),
+              Text(
+                'Failed to load leads',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? ThemeConfig.darkTextPrimary : ThemeConfig.textPrimary,
+                ),
+              ),
+              const SizedBox(height: ThemeConfig.spacingS),
+              Text(
+                leadProvider.errorMessage ?? 'Unknown error occurred',
+                style: TextStyle(
+                  color: isDark ? ThemeConfig.darkTextSecondary : ThemeConfig.textSecondary,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: ThemeConfig.spacingXL),
+              ElevatedButton.icon(
+                onPressed: () {
+                  leadProvider.clearError();
+                  leadProvider.loadLeads(refresh: true);
+                },
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Retry'),
+                style: ThemeConfig.primaryButtonStyle,
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Failed to load leads',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            leadProvider.errorMessage ?? 'Unknown error',
-            style: TextStyle(
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              leadProvider.clearError();
-              leadProvider.loadLeads(refresh: true);
-            },
-            child: const Text('Retry'),
-          ),
-        ],
+        ),
+        delay: const Duration(milliseconds: 300),
       ),
     );
   }
@@ -748,6 +993,55 @@ class _LeadsScreenState extends State<LeadsScreen> {
     showDialog(
       context: context,
       builder: (context) => _FilterDialog(),
+    );
+  }
+
+  // MODERN ANIMATED FABs
+  Widget _buildAnimatedFABs() {
+    return Consumer<LeadProvider>(
+      builder: (context, leadProvider, child) {
+        final leads = leadProvider.filteredLeads;
+        final newLeads = leads.where((lead) => lead.status == 'new').toList();
+        final callbackLeads =
+            leads.where((lead) => lead.status == 'callback').toList();
+
+        final fabItems = <FABItem>[];
+
+        if (callbackLeads.isNotEmpty) {
+          fabItems.add(FABItem(
+            label: 'Callbacks',
+            icon: const Icon(Icons.schedule_rounded),
+            onPressed: () => _startAutoDialer(context, callbackLeads),
+            backgroundColor: ThemeConfig.warningColor,
+          ));
+        }
+
+        if (newLeads.isNotEmpty) {
+          fabItems.add(FABItem(
+            label: 'New',
+            icon: const Icon(Icons.fiber_new_rounded),
+            onPressed: () => _startAutoDialer(context, newLeads),
+            backgroundColor: ThemeConfig.successColor,
+          ));
+        }
+
+        if (leads.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Positioned(
+          bottom: ThemeConfig.spacingM + kBottomNavigationBarHeight,
+          right: ThemeConfig.spacingM,
+          child: AnimatedFAB(
+            items: fabItems,
+            mainButton: const Icon(Icons.auto_mode_rounded),
+            isExpanded: false,
+            onToggle: () {
+              _startAutoDialer(context, leads);
+            },
+          ),
+        );
+      },
     );
   }
 

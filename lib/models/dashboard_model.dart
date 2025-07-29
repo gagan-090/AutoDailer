@@ -1,4 +1,7 @@
 // lib/models/dashboard_model.dart
+import 'call_log_model.dart';
+import 'follow_up_model.dart';
+
 class DashboardData {
   final DashboardSummary summary;
   final List<LeadStatusCount> leadStatuses;

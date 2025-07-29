@@ -1,4 +1,7 @@
 // lib/models/call_log_model.dart
+import 'lead_info_model.dart';
+import 'user_model.dart';
+
 class CallLog {
   final int id;
   final LeadInfo lead;
